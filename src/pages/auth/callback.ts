@@ -1,9 +1,11 @@
 import type { APIRoute } from "astro";
 import { getEnv } from "../../lib/config";
 import {
+  RETURN_TO_COOKIE_NAME,
   STATE_COOKIE_NAME,
   exchangeCode,
   fetchAuthenticatedUser,
+  sanitizeReturnTo,
   verifyState,
 } from "../../lib/auth/oauth";
 import { SESSION_COOKIE_NAME, SESSION_TTL_SECONDS, signSession } from "../../lib/auth/session";
@@ -23,6 +25,8 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
   const state = params.get("state");
   const stateCookie = cookies.get(STATE_COOKIE_NAME)?.value;
   cookies.delete(STATE_COOKIE_NAME, { path: "/" });
+  const returnToCookie = cookies.get(RETURN_TO_COOKIE_NAME)?.value;
+  cookies.set(RETURN_TO_COOKIE_NAME, "", { path: "/", maxAge: 0, httpOnly: true, secure: true, sameSite: "lax" });
 
   // CSRF guard: the state must be validly signed AND match the cookie set at /auth/login.
   if (
@@ -58,7 +62,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
       path: "/",
       maxAge: SESSION_TTL_SECONDS,
     });
-    return redirect("/", 302);
+    return redirect(sanitizeReturnTo(returnToCookie), 302);
   } catch (error) {
     // Message only — GitHubApiError messages never contain tokens (client.ts).
     console.error("oauth callback failed:", error instanceof Error ? error.message : String(error));
