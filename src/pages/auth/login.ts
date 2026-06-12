@@ -31,6 +31,9 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
       path: "/",
       maxAge: STATE_TTL_SECONDS,
     });
+  } else if (cookies.has(RETURN_TO_COOKIE_NAME)) {
+    // A fresh plain login must not inherit a stale invite-link destination.
+    cookies.delete(RETURN_TO_COOKIE_NAME, { path: "/" });
   }
 
   return redirect(buildAuthorizeUrl({ clientId: env.GITHUB_OAUTH_CLIENT_ID, state }), 302);

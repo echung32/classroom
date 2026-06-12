@@ -115,6 +115,17 @@ describe("GET /auth/login", () => {
       expect(response.headers.getSetCookie().some((c) => c.startsWith("return_to="))).toBe(false);
     }
   });
+
+  it("clears a stale return_to cookie when logging in without returnTo", async () => {
+    const response = await SELF.fetch("https://example.com/auth/login", {
+      redirect: "manual",
+      headers: { cookie: `return_to=${encodeURIComponent("/assignments/stale")}` },
+    });
+    const cleared = response.headers.getSetCookie().find((c) => c.startsWith("return_to="));
+    expect(cleared).toBeDefined();
+    // Astro's delete emits value "deleted" with a past expiry — assert it expires.
+    expect(cleared!).toMatch(/Expires=Thu, 01 Jan 1970/);
+  });
 });
 
 describe("GET /auth/callback", () => {
