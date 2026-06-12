@@ -23,7 +23,6 @@ async function setupAccepted(opts: { githubId: number; login: string }) {
     title: "HW 1",
     templateRepo: "test-org/hw1-template",
     deadlineAt: undefined,
-    graceMinutes: 0,
   });
   const student = await seedUserAndCookie({ githubId: opts.githubId + 1, login: opts.login });
   // Accept first so a repo row exists. The global outbound answers the GitHub calls.
@@ -87,7 +86,6 @@ describe("POST /api/assignments/:id/resync", () => {
       title: "HW 1",
       templateRepo: "test-org/hw1-template",
       deadlineAt: undefined,
-      graceMinutes: 0,
     });
     const student = await seedUserAndCookie({ githubId: 81, login: "noaccept" });
 
@@ -112,7 +110,6 @@ describe("POST /api/assignments/:id/resync", () => {
       title: "HW 1",
       templateRepo: "test-org/hw1-template",
       deadlineAt: undefined,
-      graceMinutes: 0,
     });
     const student = await seedUserAndCookie({ githubId: 91, login: "enrollednorepo" });
     await createStudent(env.DB, {

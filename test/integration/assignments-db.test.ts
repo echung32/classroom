@@ -27,7 +27,6 @@ describe("assignments repository", () => {
       slug: "hw1",
       title: "Homework 1",
       templateRepo: "my-org/hw1-template",
-      graceMinutes: 0,
     });
 
     expect(assignment.id).toMatch(/^[0-9a-f-]{36}$/);
@@ -36,11 +35,10 @@ describe("assignments repository", () => {
     expect(assignment.title).toBe("Homework 1");
     expect(assignment.templateRepo).toBe("my-org/hw1-template");
     expect(assignment.deadlineAt).toBeNull();
-    expect(assignment.graceMinutes).toBe(0);
     expect(assignment.status).toBe("open");
   });
 
-  it("persists an optional deadline and grace", async () => {
+  it("persists an optional deadline", async () => {
     const classroom = await seedClassroom();
     const assignment = await createAssignment(env.DB, {
       classroomId: classroom.id,
@@ -48,10 +46,8 @@ describe("assignments repository", () => {
       title: "Homework 2",
       templateRepo: "my-org/hw2-template",
       deadlineAt: "2026-09-01T23:59:00Z",
-      graceMinutes: 15,
     });
     expect(assignment.deadlineAt).toBe("2026-09-01T23:59:00Z");
-    expect(assignment.graceMinutes).toBe(15);
   });
 
   it("throws ConflictError on a duplicate slug in the same classroom", async () => {
@@ -61,7 +57,6 @@ describe("assignments repository", () => {
       slug: "hw1",
       title: "First",
       templateRepo: "my-org/hw1-template",
-      graceMinutes: 0,
     });
     await expect(
       createAssignment(env.DB, {
@@ -69,7 +64,6 @@ describe("assignments repository", () => {
         slug: "hw1",
         title: "Dup",
         templateRepo: "my-org/hw1-template",
-        graceMinutes: 0,
       }),
     ).rejects.toBeInstanceOf(ConflictError);
   });
@@ -82,14 +76,12 @@ describe("assignments repository", () => {
       slug: "hw1",
       title: "A",
       templateRepo: "my-org/hw1-template",
-      graceMinutes: 0,
     });
     const second = await createAssignment(env.DB, {
       classroomId: b.id,
       slug: "hw1",
       title: "B",
       templateRepo: "my-org/hw1-template",
-      graceMinutes: 0,
     });
     expect(second.slug).toBe("hw1");
   });
@@ -101,7 +93,6 @@ describe("assignments repository", () => {
       slug: "hw1",
       title: "Homework 1",
       templateRepo: "my-org/hw1-template",
-      graceMinutes: 0,
     });
     expect(await getAssignmentById(env.DB, created.id)).toEqual(created);
     expect(await getAssignmentById(env.DB, "missing-id")).toBeNull();
