@@ -36,12 +36,14 @@ export interface EvaluationDeps {
     studentId: string;
     deadlineSha: string | null;
     deadlineCommitAt: string | null;
+    latestSha: string | null;
     latestCommitAt: string | null;
     status: "on_time" | "late" | "missing";
   }) => Promise<void>;
   refreshSubmissionStatus: (input: {
     assignmentId: string;
     studentId: string;
+    latestSha: string | null;
     latestCommitAt: string | null;
     status: "on_time" | "late" | "missing";
   }) => Promise<void>;
@@ -149,6 +151,7 @@ export async function evaluateAssignmentSubmissions(
         await deps.refreshSubmissionStatus({
           assignmentId: assignment.id,
           studentId: repo.studentId,
+          latestSha: state.latestSha,
           latestCommitAt: state.latestCommitAt,
           status,
         });
@@ -158,6 +161,7 @@ export async function evaluateAssignmentSubmissions(
           studentId: repo.studentId,
           deadlineSha: state.deadlineSha,
           deadlineCommitAt: state.deadlineCommitAt,
+          latestSha: state.latestSha,
           latestCommitAt: state.latestCommitAt,
           status,
         });
