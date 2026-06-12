@@ -1,27 +1,43 @@
 ---
 import { getEnv } from "../lib/config";
 import { requireSession } from "../lib/auth/require";
+import { listClassroomsByOwner } from "../lib/db/classrooms";
+import ConsoleLayout from "../layouts/ConsoleLayout.astro";
+import CreateClassroomForm from "../components/CreateClassroomForm";
 
 const env = getEnv();
 const session = await requireSession(Astro.cookies, env.SESSION_SECRET);
 const error = Astro.url.searchParams.get("error");
+const classrooms = session ? await listClassroomsByOwner(env.DB, session.userId) : [];
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Classroom</title>
-  </head>
-  <body>
-    <h1>Classroom</h1>
-    {error && <p role="alert">Login failed: <code>{error}</code></p>}
-    {
-      session ? (
-        <p>Logged in as <strong>{session.githubUsername}</strong></p>
-      ) : (
-        <p><a href="/auth/login">Log in with GitHub</a></p>
-      )
-    }
-  </body>
-</html>
+<ConsoleLayout title="Classroom" username={session?.githubUsername}>
+  {error && <p role="alert" class="mb-4 text-sm text-destructive">Login failed: <code>{error}</code></p>}
+  {
+    session ? (
+      <div class="space-y-6">
+        <section>
+          <h1 class="mb-3 text-xl font-semibold">My classrooms</h1>
+          {classrooms.length === 0 && (
+            <p class="text-sm text-muted-foreground">No classrooms yet — create one below.</p>
+          )}
+          <ul class="space-y-2">
+            {classrooms.map((c) => (
+              <li class="rounded-lg border p-4">
+                <a href={`/classrooms/${c.id}`} class="font-medium underline">
+                  {c.name}
+                </a>
+                <span class="ml-2 text-sm text-muted-foreground">{c.githubOrg}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+        <CreateClassroomForm client:load />
+      </div>
+    ) : (
+      <p>
+        <a href="/auth/login" class="underline">Log in with GitHub</a>
+      </p>
+    )
+  }
+</ConsoleLayout>

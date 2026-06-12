@@ -6,6 +6,7 @@ import {
   ensureOrgRepo,
   getMainRef,
   updateMainRef,
+  type TreeEntry,
 } from "../../src/lib/github/git-data";
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -19,7 +20,7 @@ describe("ensureOrgRepo", () => {
     );
     const res = await ensureOrgRepo({ token: "t", org: "org", name: "grader-hw1", fetchImpl });
     expect(res).toEqual({ fullName: "org/grader-hw1", htmlUrl: "https://github.com/org/grader-hw1" });
-    const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect(String(url)).toBe("https://api.github.com/orgs/org/repos");
     expect(init.method).toBe("POST");
     expect(JSON.parse(String(init.body))).toEqual({ name: "grader-hw1", private: true });
@@ -34,17 +35,17 @@ describe("ensureOrgRepo", () => {
       );
     const res = await ensureOrgRepo({ token: "t", org: "org", name: "grader-hw1", fetchImpl });
     expect(res.fullName).toBe("org/grader-hw1");
-    expect(String((fetchImpl.mock.calls[1] as [string])[0])).toBe("https://api.github.com/repos/org/grader-hw1");
+    expect(String((fetchImpl.mock.calls[1] as unknown as [string])[0])).toBe("https://api.github.com/repos/org/grader-hw1");
   });
 });
 
 describe("createTree", () => {
   it("POSTs the tree entries (no base_tree) and returns the sha", async () => {
     const fetchImpl = vi.fn(async () => jsonResponse(201, { sha: "tree-sha" }));
-    const tree = [{ path: "README.md", mode: "100644", type: "blob", content: "hi" }];
+    const tree: TreeEntry[] = [{ path: "README.md", mode: "100644", type: "blob", content: "hi" }];
     const sha = await createTree({ token: "t", org: "org", repo: "grader-hw1", tree, fetchImpl });
     expect(sha).toBe("tree-sha");
-    const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect(String(url)).toBe("https://api.github.com/repos/org/grader-hw1/git/trees");
     expect(JSON.parse(String(init.body))).toEqual({ tree });
   });
@@ -57,7 +58,7 @@ describe("createCommit", () => {
       token: "t", org: "org", repo: "grader-hw1", message: "build", tree: "tree-sha", parents: [], fetchImpl,
     });
     expect(sha).toBe("commit-sha");
-    const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect(String(url)).toBe("https://api.github.com/repos/org/grader-hw1/git/commits");
     expect(JSON.parse(String(init.body))).toEqual({ message: "build", tree: "tree-sha", parents: [] });
   });
@@ -68,7 +69,7 @@ describe("getMainRef", () => {
     const fetchImpl = vi.fn(async () => jsonResponse(200, { object: { sha: "main-sha" } }));
     const sha = await getMainRef({ token: "t", org: "org", repo: "grader-hw1", fetchImpl });
     expect(sha).toBe("main-sha");
-    expect(String((fetchImpl.mock.calls[0] as [string])[0])).toBe(
+    expect(String((fetchImpl.mock.calls[0] as unknown as [string])[0])).toBe(
       "https://api.github.com/repos/org/grader-hw1/git/ref/heads/main",
     );
   });
@@ -84,7 +85,7 @@ describe("createMainRef / updateMainRef", () => {
   it("createMainRef POSTs refs/heads/main", async () => {
     const fetchImpl = vi.fn(async () => jsonResponse(201, { ref: "refs/heads/main" }));
     await createMainRef({ token: "t", org: "org", repo: "grader-hw1", sha: "c", fetchImpl });
-    const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect(String(url)).toBe("https://api.github.com/repos/org/grader-hw1/git/refs");
     expect(init.method).toBe("POST");
     expect(JSON.parse(String(init.body))).toEqual({ ref: "refs/heads/main", sha: "c" });
@@ -93,7 +94,7 @@ describe("createMainRef / updateMainRef", () => {
   it("updateMainRef PATCHes git/refs/heads/main with force:false", async () => {
     const fetchImpl = vi.fn(async () => jsonResponse(200, { ref: "refs/heads/main" }));
     await updateMainRef({ token: "t", org: "org", repo: "grader-hw1", sha: "c", fetchImpl });
-    const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect(String(url)).toBe("https://api.github.com/repos/org/grader-hw1/git/refs/heads/main");
     expect(init.method).toBe("PATCH");
     expect(JSON.parse(String(init.body))).toEqual({ sha: "c", force: false });

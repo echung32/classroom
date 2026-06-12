@@ -24,7 +24,7 @@ async function seedBoard(opts: { githubId: number; deadlineAt: string }) {
   });
 
   let subCounter = 0;
-  async function seedSub(username: string, decision: string, deadlineSha: string | null, latestSha: string | null) {
+  async function seedSub(username: string, decision: "at_deadline" | "accept_late" | "exclude", deadlineSha: string | null, latestSha: string | null) {
     subCounter += 1;
     const u = await seedUserAndCookie({ githubId: opts.githubId * 100 + subCounter, login: username });
     const student = await createStudent(env.DB, {
