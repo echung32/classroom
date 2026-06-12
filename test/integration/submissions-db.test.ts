@@ -1,7 +1,7 @@
 import { env } from "cloudflare:test";
 import "./apply-migrations";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createAssignment } from "../../src/lib/db/assignments";
+import { createAssignment, getAssignmentById, setGraderBuilt } from "../../src/lib/db/assignments";
 import { createClassroom } from "../../src/lib/db/classrooms";
 import {
   freezeSubmission,
@@ -234,5 +234,15 @@ describe("listSubmissionsWithStudents", () => {
       latestSha: "lsha",
       status: "late",
     });
+  });
+});
+
+describe("setGraderBuilt", () => {
+  it("sets grader_repo and status='built'", async () => {
+    const { assignment } = await seedForGrading();
+    await setGraderBuilt(env.DB, assignment.id, "org/grader-hw1");
+    const after = await getAssignmentById(env.DB, assignment.id);
+    expect(after?.graderRepo).toBe("org/grader-hw1");
+    expect(after?.status).toBe("built");
   });
 });
