@@ -1570,7 +1570,9 @@ function getBoard(assignmentId: string, cookie?: string): Promise<Response> {
 function postRefresh(assignmentId: string, cookie: string): Promise<Response> {
   return SELF.fetch(`https://example.com/api/assignments/${assignmentId}/submissions/refresh`, {
     method: "POST",
-    headers: { cookie },
+    // content-type required: Astro's checkOrigin CSRF guard rejects form-like
+    // POSTs (incl. those with no content-type) cross-site. Mirrors accept/resync tests.
+    headers: { "content-type": "application/json", cookie },
   });
 }
 
