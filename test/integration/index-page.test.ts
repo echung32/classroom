@@ -61,6 +61,7 @@ describe("GET /", () => {
     const html = await response.text();
     expect(html).toContain("CS101");
     expect(html).toContain(`/classrooms/${classroom.id}`);
+    expect(html).toContain("my-org");
   });
 });
 

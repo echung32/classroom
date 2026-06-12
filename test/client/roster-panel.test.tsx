@@ -45,4 +45,17 @@ describe("RosterPanel", () => {
     );
     expect(onSuccess).toHaveBeenCalled();
   });
+
+  it("shows an error and does not POST when all lines are blank", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+
+    render(<RosterPanel classroomId="c1" students={[]} onSuccess={() => {}} />);
+    await user.type(screen.getByLabelText("Roster names (one per line)"), "   {enter}  ");
+    await user.click(screen.getByRole("button", { name: "Add to roster" }));
+
+    expect((await screen.findByRole("alert")).textContent).toContain("Enter at least one roster name");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
