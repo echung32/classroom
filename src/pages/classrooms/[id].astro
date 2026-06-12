@@ -1,0 +1,75 @@
+---
+// src/pages/classrooms/[id].astro
+import { getEnv } from "../../lib/config";
+import { requireSession } from "../../lib/auth/require";
+import { listAssignmentsByClassroom } from "../../lib/db/assignments";
+import { getClassroomById } from "../../lib/db/classrooms";
+import { listStudentsByClassroom } from "../../lib/db/students";
+import ConsoleLayout from "../../layouts/ConsoleLayout.astro";
+import NotFound from "../../components/NotFound.astro";
+import CreateAssignmentForm from "../../components/CreateAssignmentForm";
+import RosterPanel from "../../components/RosterPanel";
+
+const env = getEnv();
+const session = await requireSession(Astro.cookies, env.SESSION_SECRET);
+if (!session) return Astro.redirect("/auth/login");
+
+const classroom = await getClassroomById(env.DB, Astro.params.id!);
+const owned = classroom !== null && classroom.createdBy === session.userId;
+if (!owned) Astro.response.status = 404;
+
+const assignments = owned ? await listAssignmentsByClassroom(env.DB, classroom!.id) : [];
+const students = owned ? await listStudentsByClassroom(env.DB, classroom!.id) : [];
+const rosterStudents = students.map((s) => ({
+  id: s.id,
+  rosterIdentifier: s.rosterIdentifier,
+  githubUsername: s.githubUsername,
+}));
+---
+
+<ConsoleLayout title={owned ? classroom!.name : "Not found"} username={session.githubUsername}>
+  {
+    !owned ? (
+      <NotFound />
+    ) : (
+      <div class="space-y-6">
+        <header>
+          <h1 class="text-xl font-semibold">{classroom!.name}</h1>
+          <p class="text-sm text-muted-foreground">{classroom!.githubOrg}</p>
+        </header>
+
+        <section>
+          <h2 class="mb-3 font-semibold">Assignments</h2>
+          {assignments.length === 0 && (
+            <p class="text-sm text-muted-foreground">No assignments yet — create one below.</p>
+          )}
+          <ul class="space-y-2">
+            {assignments.map((a) => (
+              <li class="flex items-center gap-3 rounded-lg border p-4">
+                <a href={`/assignments/${a.id}`} class="font-medium underline">
+                  {a.title}
+                </a>
+                <span class="text-sm text-muted-foreground">{a.slug}</span>
+                <span class="text-sm text-muted-foreground">
+                  {a.deadlineAt ? `due ${a.deadlineAt}` : "no deadline"}
+                </span>
+                <span class="text-sm text-muted-foreground">{a.status}</span>
+                {a.graderRepo && (
+                  <a
+                    href={`https://github.com/${a.graderRepo}`}
+                    class="text-sm underline"
+                  >
+                    grader
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <CreateAssignmentForm client:load classroomId={classroom!.id} />
+        <RosterPanel client:load classroomId={classroom!.id} students={rosterStudents} />
+      </div>
+    )
+  }
+</ConsoleLayout>
