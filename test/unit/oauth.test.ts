@@ -132,6 +132,16 @@ describe("sanitizeReturnTo", () => {
     expect(sanitizeReturnTo(undefined)).toBe("/");
   });
 
+  it("falls back to / for whitespace-embedded protocol-relative paths", () => {
+    expect(sanitizeReturnTo("/\t/evil.com")).toBe("/");
+    expect(sanitizeReturnTo("/\t\t//evil.com")).toBe("/");
+  });
+
+  it("preserves query strings and fragments on same-origin paths", () => {
+    expect(sanitizeReturnTo("/assignments/abc?ref=invite")).toBe("/assignments/abc?ref=invite");
+    expect(sanitizeReturnTo("/assignments/abc#section")).toBe("/assignments/abc#section");
+  });
+
   it("exports the return-to cookie name", () => {
     expect(RETURN_TO_COOKIE_NAME).toBe("return_to");
   });
