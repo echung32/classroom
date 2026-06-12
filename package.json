@@ -16,8 +16,9 @@
     "db:migrate:remote": "wrangler d1 migrations apply icspp-classroom --remote",
     "typecheck": "tsc --noEmit && tsc --noEmit -p test/integration",
     "test:unit": "vitest run -c vitest.unit.config.ts",
+    "test:client": "vitest run -c vitest.client.config.ts",
     "test:integration": "yarn build && vitest run -c vitest.integration.config.ts",
-    "test": "yarn test:unit && yarn test:integration"
+    "test": "yarn test:unit && yarn test:client && yarn test:integration"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^13.7.0",
@@ -39,8 +40,12 @@
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.16.15",
     "@cloudflare/workers-types": "^4.20260611.1",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "jsdom": "^29.1.1",
     "shadcn": "^4.11.0",
     "typescript": "^5.9.0",
     "vitest": "^4.1.8",
