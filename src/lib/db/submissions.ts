@@ -126,6 +126,62 @@ export async function refreshSubmissionStatus(
     .run();
 }
 
+export interface SubmissionWithStudent {
+  studentId: string;
+  githubUsername: string | null;
+  /** The student repo name `{slug}-{username}`; null when the student has no linked GitHub username. */
+  repoName: string | null;
+  gradeDecision: string;
+  deadlineSha: string | null;
+  latestSha: string | null;
+  status: string;
+}
+
+/**
+ * Submissions for an assignment, joined to students and the assignment, yielding
+ * the student repo name (`{slug}-{username}`) the grader build needs. Reuses the
+ * join shape of listReposWithStudentsByAssignment.
+ */
+export async function listSubmissionsWithStudents(
+  db: D1Database,
+  assignmentId: string,
+): Promise<SubmissionWithStudent[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT sub.student_id,
+              s.github_username,
+              a.slug,
+              sub.grade_decision,
+              sub.deadline_sha,
+              sub.latest_sha,
+              sub.status
+         FROM submissions sub
+         JOIN students s ON s.id = sub.student_id
+         JOIN assignments a ON a.id = sub.assignment_id
+        WHERE sub.assignment_id = ?1
+        ORDER BY s.github_username ASC`,
+    )
+    .bind(assignmentId)
+    .all<{
+      student_id: string;
+      github_username: string | null;
+      slug: string;
+      grade_decision: string;
+      deadline_sha: string | null;
+      latest_sha: string | null;
+      status: string;
+    }>();
+  return results.map((r) => ({
+    studentId: r.student_id,
+    githubUsername: r.github_username,
+    repoName: r.github_username ? `${r.slug}-${r.github_username}` : null,
+    gradeDecision: r.grade_decision,
+    deadlineSha: r.deadline_sha,
+    latestSha: r.latest_sha,
+    status: r.status,
+  }));
+}
+
 /** UPDATE grade_decision on an existing (evaluated) row. False when no row matched. */
 export async function setGradeDecision(
   db: D1Database,

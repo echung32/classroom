@@ -7,6 +7,7 @@ import {
   freezeSubmission,
   getSubmission,
   listSubmissionsByAssignment,
+  listSubmissionsWithStudents,
   refreshSubmissionStatus,
   setGradeDecision,
 } from "../../src/lib/db/submissions";
@@ -211,5 +212,27 @@ describe("submissions DB: latest_sha + grade_decision", () => {
     const { assignment } = await seedForGrading();
     const ok = await setGradeDecision(env.DB, assignment.id, "no-such-student", "exclude");
     expect(ok).toBe(false);
+  });
+});
+
+describe("listSubmissionsWithStudents", () => {
+  it("joins submissions → students → assignments and builds the student repo name", async () => {
+    const { assignment, student } = await seedForGrading();
+    await freezeSubmission(env.DB, {
+      assignmentId: assignment.id, studentId: student.id,
+      deadlineSha: "dsha", deadlineCommitAt: "2025-12-31T00:00:00Z",
+      latestSha: "lsha", latestCommitAt: "2026-02-01T00:00:00Z", status: "late",
+    });
+    const rows = await listSubmissionsWithStudents(env.DB, assignment.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      studentId: student.id,
+      githubUsername: "stud",
+      repoName: "hw1-grading-stud",
+      gradeDecision: "at_deadline",
+      deadlineSha: "dsha",
+      latestSha: "lsha",
+      status: "late",
+    });
   });
 });
