@@ -1,7 +1,10 @@
 import { SELF, env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { signSession } from "../../src/lib/auth/session";
+import { createAssignment } from "../../src/lib/db/assignments";
 import { createClassroom } from "../../src/lib/db/classrooms";
+import { recordRepo } from "../../src/lib/db/repos";
+import { createStudent } from "../../src/lib/db/students";
 import { seedUserAndCookie } from "./helpers";
 
 describe("GET /", () => {
@@ -62,6 +65,58 @@ describe("GET /", () => {
     expect(html).toContain("CS101");
     expect(html).toContain(`/classrooms/${classroom.id}`);
     expect(html).toContain("my-org");
+  });
+
+  it("lists the student's assignments with accepted/not-accepted badges", async () => {
+    const teacher = await seedUserAndCookie({ githubId: 40, login: "teacher40" });
+    const classroom = await createClassroom(env.DB, {
+      name: "CS200",
+      githubOrg: "my-org",
+      timezone: "UTC",
+      createdBy: teacher.user.id,
+    });
+    const accepted = await createAssignment(env.DB, {
+      classroomId: classroom.id,
+      slug: "hw1",
+      title: "Homework One",
+      templateRepo: "my-org/t",
+      deadlineAt: "2026-01-01T00:00:00Z",
+    });
+    const notAccepted = await createAssignment(env.DB, {
+      classroomId: classroom.id,
+      slug: "hw2",
+      title: "Homework Two",
+      templateRepo: "my-org/t",
+    });
+    const s = await seedUserAndCookie({ githubId: 41, login: "student41" });
+    const student = await createStudent(env.DB, {
+      classroomId: classroom.id,
+      userId: s.user.id,
+      githubUsername: "student41",
+    });
+    await recordRepo(env.DB, {
+      assignmentId: accepted.id,
+      studentId: student.id,
+      repoName: "hw1-student41",
+      repoId: 1,
+    });
+
+    const response = await SELF.fetch("https://example.com/", { headers: { cookie: s.cookie } });
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain("My assignments");
+    expect(html).toContain("Homework One");
+    expect(html).toContain(`/assignments/${accepted.id}`);
+    expect(html).toContain(`/assignments/${notAccepted.id}`);
+    expect(html).toContain("CS200");
+    expect(html).toContain(">accepted</span>");
+    expect(html).toContain(">not accepted</span>");
+  });
+
+  it("omits the My assignments section for users with no enrollments", async () => {
+    const { cookie } = await seedUserAndCookie({ githubId: 42, login: "lonely42" });
+    const response = await SELF.fetch("https://example.com/", { headers: { cookie } });
+    expect(await response.text()).not.toContain("My assignments");
   });
 });
 

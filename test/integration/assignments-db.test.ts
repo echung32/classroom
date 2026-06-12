@@ -4,9 +4,12 @@ import {
   createAssignment,
   getAssignmentById,
   listAssignmentsByClassroom,
+  listAssignmentsForStudentUser,
 } from "../../src/lib/db/assignments";
 import { createClassroom } from "../../src/lib/db/classrooms";
 import { ConflictError } from "../../src/lib/http/errors";
+import { recordRepo } from "../../src/lib/db/repos";
+import { createStudent } from "../../src/lib/db/students";
 import { seedUserAndCookie } from "./helpers";
 
 async function seedClassroom(githubId = 1, login = "teacher") {
@@ -101,5 +104,93 @@ describe("assignments repository", () => {
     expect(list).toHaveLength(1);
     expect(list[0].id).toBe(created.id);
     expect(await listAssignmentsByClassroom(env.DB, "missing-id")).toEqual([]);
+  });
+});
+
+describe("listAssignmentsForStudentUser", () => {
+  it("returns enrolled assignments deadline-ascending (NULLs last) with accepted flags", async () => {
+    const classroom = await seedClassroom(20, "teacher20");
+    const noDeadline = await createAssignment(env.DB, {
+      classroomId: classroom.id,
+      slug: "hw-none",
+      title: "No deadline",
+      templateRepo: "my-org/t",
+    });
+    const early = await createAssignment(env.DB, {
+      classroomId: classroom.id,
+      slug: "hw-early",
+      title: "Early",
+      templateRepo: "my-org/t",
+      deadlineAt: "2026-01-01T00:00:00Z",
+    });
+    const later = await createAssignment(env.DB, {
+      classroomId: classroom.id,
+      slug: "hw-later",
+      title: "Later",
+      templateRepo: "my-org/t",
+      deadlineAt: "2026-06-01T00:00:00Z",
+    });
+
+    const { user } = await seedUserAndCookie({ githubId: 21, login: "student21" });
+    const student = await createStudent(env.DB, {
+      classroomId: classroom.id,
+      userId: user.id,
+      githubUsername: "student21",
+    });
+    await recordRepo(env.DB, {
+      assignmentId: early.id,
+      studentId: student.id,
+      repoName: "hw-early-student21",
+      repoId: 5,
+    });
+
+    const rows = await listAssignmentsForStudentUser(env.DB, user.id);
+    expect(rows.map((r) => r.title)).toEqual(["Early", "Later", "No deadline"]);
+    expect(rows[0]).toEqual({
+      assignmentId: early.id,
+      title: "Early",
+      slug: "hw-early",
+      deadlineAt: "2026-01-01T00:00:00Z",
+      classroomName: "CS101",
+      accepted: true,
+    });
+    expect(rows.find((r) => r.assignmentId === later.id)?.accepted).toBe(false);
+    expect(rows.find((r) => r.assignmentId === noDeadline.id)?.accepted).toBe(false);
+  });
+
+  it("is empty for a user with no enrollments (other classrooms invisible)", async () => {
+    const other = await seedClassroom(22, "teacher22");
+    await createAssignment(env.DB, {
+      classroomId: other.id,
+      slug: "hw1",
+      title: "Other HW",
+      templateRepo: "my-org/t",
+    });
+    const { user } = await seedUserAndCookie({ githubId: 23, login: "student23" });
+    expect(await listAssignmentsForStudentUser(env.DB, user.id)).toEqual([]);
+  });
+
+  it("shows assignments from every classroom the student is enrolled in, without duplicates", async () => {
+    const classA = await seedClassroom(30, "teacherA");
+    const classB = await seedClassroom(31, "teacherB");
+    await createAssignment(env.DB, {
+      classroomId: classA.id,
+      slug: "a1",
+      title: "A1",
+      templateRepo: "my-org/t",
+    });
+    await createAssignment(env.DB, {
+      classroomId: classB.id,
+      slug: "b1",
+      title: "B1",
+      templateRepo: "my-org/t",
+    });
+    const { user } = await seedUserAndCookie({ githubId: 32, login: "multi32" });
+    await createStudent(env.DB, { classroomId: classA.id, userId: user.id, githubUsername: "multi32" });
+    await createStudent(env.DB, { classroomId: classB.id, userId: user.id, githubUsername: "multi32" });
+
+    const rows = await listAssignmentsForStudentUser(env.DB, user.id);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.title).sort()).toEqual(["A1", "B1"]);
   });
 });
