@@ -41,7 +41,7 @@ local dev working, and the live smoke test passing.
 
 3. Verify the converted file starts with `-----BEGIN PRIVATE KEY-----` (no "RSA").
    The converted file's **contents** are `GITHUB_APP_PRIVATE_KEY`.
-4. Delete both files once the secret is stored (step 5).
+4. Delete both files once the secret is stored **in every environment you need** (the local `.dev.vars` in section 5, and — if deploying — the `wrangler secret put GITHUB_APP_PRIVATE_KEY` in section 5's deployed block, which needs `github-app.pkcs8.pem` to still exist).
 
 ## 3. Install the App and capture the installation id
 
@@ -75,7 +75,14 @@ print("GITHUB_APP_PRIVATE_KEY=\"" + key.replace("\n", "\\n") + "\"")
 EOF
 ```
 
-Paste the printed line into `.dev.vars` and fill in the rest. Generate the session secret:
+Paste the printed line into `.dev.vars` and fill in the rest.
+
+> **Keep the surrounding double quotes** on `GITHUB_APP_PRIVATE_KEY`. They are what makes
+> the `.dev.vars` parser turn the `\n` escapes back into real newlines. Removing them (or
+> using single quotes) leaves literal `\n` in the key, and the GitHub App smoke test in
+> section 7 will fail with a PEM/PKCS#8 error.
+
+Generate the session secret:
 
 ```bash
 openssl rand -hex 32   # → SESSION_SECRET
