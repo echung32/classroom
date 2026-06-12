@@ -222,7 +222,7 @@ describe("json", () => {
 
 describe("error", () => {
   it("shapes failures under `error` with message and optional fields", async () => {
-    expect(await error("nope", 403).then((r) => r.json())).toEqual({ error: { message: "nope" } });
+    expect(await error("nope", 403).json()).toEqual({ error: { message: "nope" } });
     const withFields = error("bad", 400, { name: "required" });
     expect(withFields.status).toBe(400);
     expect(await withFields.json()).toEqual({ error: { message: "bad", fields: { name: "required" } } });
