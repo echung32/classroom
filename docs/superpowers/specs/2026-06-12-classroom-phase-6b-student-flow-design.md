@@ -84,8 +84,9 @@ Header in both states: assignment title, classroom name + GitHub org, deadline (
   - Submit: `POST /api/assignments/:id/accept` (JSON content-type, via the shared
     `client/api.ts` helper) with `{ rosterStudentId? }`.
   - On 201: show the repo URL and, when present, the GitHub `invitationUrl` with copy
-    "accept the invite on GitHub to get push access", then a button/reload into the status
-    view. `status: "already_accepted"` renders the same success state.
+    "accept the invite on GitHub to get push access", plus a "Continue" button that calls
+    `location.reload()` so the page re-renders into the status view (§3.2).
+    `status: "already_accepted"` renders the same success state.
   - Errors inline: 409 claim conflicts (row already claimed / already enrolled) re-render the
     panel with the message; 502 (GitHub down) shows a retry note.
 
@@ -95,11 +96,13 @@ Server-rendered (the only island is the re-sync button):
 
 - Always: repo link (`https://github.com/{org}/{repoName}`), deadline.
 - **Pre-deadline / no deadline:** "not due yet — keep pushing to your repo" / "this
-  assignment has no deadline". No GitHub calls (the evaluator returns `pending` /
-  `no-deadline` without reading GitHub).
-- **Post-deadline — single-student live evaluation:** frontmatter builds deps exactly as the
-  teacher page does (`buildEvaluationDeps(env.DB, token)`), then wraps `listRepos` to return
-  only this student's repo row:
+  assignment has no deadline". Decided **locally in frontmatter** (`deadlineAt === null` or
+  `now < deadlineAt`) — the token mint and evaluator are not invoked, so pre-deadline student
+  page loads make **zero** GitHub calls.
+- **Post-deadline (deadline set and passed) — single-student live evaluation:** frontmatter
+  mints the installation token, builds deps exactly as the teacher page does
+  (`buildEvaluationDeps(env.DB, token)`), then wraps `listRepos` to return only this
+  student's repo row:
 
   ```ts
   const deps = buildEvaluationDeps(env.DB, token);
@@ -135,7 +138,8 @@ listAssignmentsForStudentUser(db, userId): Promise<{
 
 `students` (by `user_id`) → join `assignments` on `classroom_id` → join `classrooms` for the
 name → left-join `repos` on `(assignment_id, student_id)`; `accepted = repo IS NOT NULL`.
-Ordered by `deadline_at` ascending, NULLs last (or `created_at` as tiebreaker).
+Ordered by `deadline_at` ascending with NULLs last, then `created_at` ascending as the
+tiebreaker.
 
 `src/pages/index.astro`: render a **"My assignments"** section (only when the list is
 non-empty) below "My classrooms", each row showing title, classroom name, deadline, and an
