@@ -16,4 +16,12 @@ describe("GET /auth/logout", () => {
     // Astro cookies.delete() expires the cookie in the past.
     expect(setCookie).toMatch(/expires=thu, 01 jan 1970/);
   });
+
+  it("redirects cleanly even without a session", async () => {
+    const response = await SELF.fetch("https://example.com/auth/logout", {
+      redirect: "manual",
+    });
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/");
+  });
 });
