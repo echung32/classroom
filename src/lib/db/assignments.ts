@@ -100,6 +100,53 @@ export async function listAssignmentsByClassroom(
   return results.map(toAssignment);
 }
 
+export interface StudentAssignment {
+  assignmentId: string;
+  title: string;
+  slug: string;
+  deadlineAt: string | null;
+  classroomName: string;
+  accepted: boolean;
+}
+
+/** Every assignment in classrooms where this user has a student row, joined to
+ *  the classroom name; accepted = a repo row exists for (assignment, student).
+ *  Deadline ascending with NULL (no deadline) last, created_at as tiebreaker. */
+export async function listAssignmentsForStudentUser(
+  db: D1Database,
+  userId: string,
+): Promise<StudentAssignment[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT a.id AS assignment_id, a.title, a.slug, a.deadline_at,
+              c.name AS classroom_name,
+              CASE WHEN r.id IS NULL THEN 0 ELSE 1 END AS accepted
+         FROM students s
+         JOIN assignments a ON a.classroom_id = s.classroom_id
+         JOIN classrooms c ON c.id = s.classroom_id
+         LEFT JOIN repos r ON r.assignment_id = a.id AND r.student_id = s.id
+        WHERE s.user_id = ?1
+        ORDER BY a.deadline_at IS NULL, a.deadline_at ASC, a.created_at ASC`,
+    )
+    .bind(userId)
+    .all<{
+      assignment_id: string;
+      title: string;
+      slug: string;
+      deadline_at: string | null;
+      classroom_name: string;
+      accepted: number;
+    }>();
+  return results.map((r) => ({
+    assignmentId: r.assignment_id,
+    title: r.title,
+    slug: r.slug,
+    deadlineAt: r.deadline_at,
+    classroomName: r.classroom_name,
+    accepted: r.accepted !== 0,
+  }));
+}
+
 /** Mark an assignment's grader as built: record grader_repo and flip status to 'built'. */
 export async function setGraderBuilt(
   db: D1Database,

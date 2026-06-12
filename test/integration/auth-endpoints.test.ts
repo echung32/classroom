@@ -1,6 +1,6 @@
 import { SELF, env } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createState } from "../../src/lib/auth/oauth";
+import { STATE_TTL_SECONDS, createState } from "../../src/lib/auth/oauth";
 import { verifySession } from "../../src/lib/auth/session";
 
 // NOTE: `@cloudflare/vitest-pool-workers@0.16.x` no longer re-exports `fetchMock`
@@ -81,6 +81,50 @@ describe("GET /auth/login", () => {
     const state = location.searchParams.get("state")!;
     expect(state).toBeTruthy();
     expect(response.headers.getSetCookie().join("; ")).toContain(`oauth_state=${state}`);
+  });
+
+  it("stores a sanitized returnTo in a short-lived httpOnly cookie", async () => {
+    const response = await SELF.fetch(
+      "https://example.com/auth/login?returnTo=" + encodeURIComponent("/assignments/abc"),
+      { redirect: "manual" },
+    );
+    expect(response.status).toBe(302);
+
+    const setCookie = response.headers.getSetCookie().find((c) => c.startsWith("return_to="));
+    expect(setCookie).toBeDefined();
+    expect(decodeURIComponent(setCookie!.split(";")[0].slice("return_to=".length))).toBe(
+      "/assignments/abc",
+    );
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("Secure");
+    expect(setCookie).toContain("SameSite=Lax");
+    expect(setCookie).toContain(`Max-Age=${STATE_TTL_SECONDS}`);
+  });
+
+  it("does not set the cookie when returnTo is absent or hostile", async () => {
+    const variants = [
+      "",
+      "?returnTo=" + encodeURIComponent("https://evil.com/x"),
+      "?returnTo=" + encodeURIComponent("//evil.com"),
+      "?returnTo=" + encodeURIComponent("/\\evil.com"),
+    ];
+    for (const qs of variants) {
+      const response = await SELF.fetch(`https://example.com/auth/login${qs}`, {
+        redirect: "manual",
+      });
+      expect(response.headers.getSetCookie().some((c) => c.startsWith("return_to="))).toBe(false);
+    }
+  });
+
+  it("clears a stale return_to cookie when logging in without returnTo", async () => {
+    const response = await SELF.fetch("https://example.com/auth/login", {
+      redirect: "manual",
+      headers: { cookie: `return_to=${encodeURIComponent("/assignments/stale")}` },
+    });
+    const cleared = response.headers.getSetCookie().find((c) => c.startsWith("return_to="));
+    expect(cleared).toBeDefined();
+    // Astro's delete emits value "deleted" with a past expiry — assert it expires.
+    expect(cleared!).toMatch(/Expires=Thu, 01 Jan 1970/);
   });
 });
 
@@ -166,5 +210,42 @@ describe("GET /auth/callback", () => {
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("/?error=oauth_failed");
     expect(response.headers.getSetCookie().some((c) => c.startsWith("session="))).toBe(false);
+  });
+
+  it("redirects to the returnTo cookie path on success and clears the cookie", async () => {
+    mockGitHubLogin({ id: 9001, login: "student-returnto" });
+    const state = await createState(env.SESSION_SECRET);
+
+    const response = await SELF.fetch(
+      `https://example.com/auth/callback?code=test-code&state=${encodeURIComponent(state)}`,
+      {
+        redirect: "manual",
+        headers: { cookie: `oauth_state=${state}; return_to=${encodeURIComponent("/assignments/abc")}` },
+      },
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/assignments/abc");
+
+    // The one-shot cookie is deleted (emptied) on the response.
+    const cleared = response.headers.getSetCookie().find((c) => c.startsWith("return_to="));
+    expect(cleared).toBeDefined();
+    expect(cleared!.split(";")[0]).toBe("return_to=");
+  });
+
+  it("falls back to / when the returnTo cookie is hostile", async () => {
+    mockGitHubLogin({ id: 9002, login: "student-evil" });
+    const state = await createState(env.SESSION_SECRET);
+
+    const response = await SELF.fetch(
+      `https://example.com/auth/callback?code=test-code&state=${encodeURIComponent(state)}`,
+      {
+        redirect: "manual",
+        headers: { cookie: `oauth_state=${state}; return_to=${encodeURIComponent("https://evil.com/x")}` },
+      },
+    );
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/");
   });
 });

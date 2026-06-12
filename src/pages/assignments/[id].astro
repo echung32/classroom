@@ -1,28 +1,43 @@
 ---
 // src/pages/assignments/[id].astro
+//
+// Dual-mode (Phase 6b): the classroom owner gets the teacher StatusBoard;
+// any other authenticated user gets the student view. The plain URL is the
+// invite link, so the owner-404 rule is relaxed for assignment pages only.
 import { getEnv } from "../../lib/config";
 import { requireSession } from "../../lib/auth/require";
 import { getAssignmentById } from "../../lib/db/assignments";
 import { getClassroomById } from "../../lib/db/classrooms";
+import { getRepoByAssignmentStudent, type Repo } from "../../lib/db/repos";
+import { findStudentByUser, listUnclaimedStudents, type Student } from "../../lib/db/students";
+import { repoUrlFor } from "../../lib/domain/slug";
 import {
   evaluateAssignmentSubmissions,
   type EvaluationResult,
 } from "../../lib/domain/evaluation";
 import { getInstallationToken } from "../../lib/github/app";
 import { buildEvaluationDeps } from "../api/assignments/[id]/submissions";
+import { shortSha, statusBadgeClass } from "../../components/client/format";
 import ConsoleLayout from "../../layouts/ConsoleLayout.astro";
 import NotFound from "../../components/NotFound.astro";
 import StatusBoard from "../../components/StatusBoard";
+import AcceptPanel from "../../components/AcceptPanel";
+import ResyncButton from "../../components/ResyncButton";
 
 const env = getEnv();
+const id = Astro.params.id!;
 const session = await requireSession(Astro.cookies, env.SESSION_SECRET);
-if (!session) return Astro.redirect("/auth/login");
+if (!session) {
+  return Astro.redirect(`/auth/login?returnTo=${encodeURIComponent(`/assignments/${id}`)}`);
+}
 
-const assignment = await getAssignmentById(env.DB, Astro.params.id!);
+const assignment = await getAssignmentById(env.DB, id);
 const classroom = assignment ? await getClassroomById(env.DB, assignment.classroomId) : null;
-const owned = classroom !== null && classroom.createdBy === session.userId;
-if (!owned) Astro.response.status = 404;
+const found = assignment !== null && classroom !== null;
+const owned = found && classroom!.createdBy === session.userId;
+if (!found) Astro.response.status = 404;
 
+// --- Teacher branch (unchanged from Phase 6a) ---
 let evaluation: EvaluationResult | null = null;
 let evalError: string | null = null;
 if (owned) {
@@ -42,13 +57,63 @@ if (owned) {
     evalError = "Evaluating submissions failed (GitHub unreachable). Reload to retry.";
   }
 }
+
+// --- Student branch ---
+const studentView = found && !owned;
+let student: Student | null = null;
+let repo: Repo | null = null;
+let rosterOptions: { id: string; rosterIdentifier: string | null }[] = [];
+let deadlinePassed = false;
+let studentEval: EvaluationResult | null = null;
+let studentEvalError: string | null = null;
+
+if (studentView) {
+  student = await findStudentByUser(env.DB, assignment!.classroomId, session.userId);
+  repo = student ? await getRepoByAssignmentStudent(env.DB, assignment!.id, student.id) : null;
+
+  if (!repo) {
+    // Accept panel; roster options only matter for users without a student row.
+    rosterOptions = student ? [] : await listUnclaimedStudents(env.DB, assignment!.classroomId);
+  } else {
+    deadlinePassed =
+      assignment!.deadlineAt !== null && Date.now() >= Date.parse(assignment!.deadlineAt);
+    // Pre-deadline / no-deadline loads make ZERO GitHub calls (no token mint,
+    // no evaluator). Post-deadline, this runs the same evaluation path as the
+    // teacher board narrowed to this student's repo — their first look freezes
+    // deadline_sha (Phase 3 COALESCE upsert); refresh:true keeps latest/status live.
+    if (deadlinePassed) {
+      try {
+        const token = await getInstallationToken({
+          appId: env.GITHUB_APP_ID,
+          privateKey: env.GITHUB_APP_PRIVATE_KEY,
+          installationId: env.GITHUB_APP_INSTALLATION_ID,
+        });
+        const deps = buildEvaluationDeps(env.DB, token);
+        studentEval = await evaluateAssignmentSubmissions(
+          {
+            ...deps,
+            listRepos: async (assignmentId) =>
+              (await deps.listRepos(assignmentId)).filter((r) => r.studentId === student!.id),
+          },
+          { assignmentId: assignment!.id, now: new Date().toISOString(), refresh: true },
+        );
+      } catch (err) {
+        console.error("student status evaluation failed:", err instanceof Error ? err.message : String(err));
+        studentEvalError = "GitHub is unreachable — your status couldn't be evaluated. Reload to retry.";
+      }
+    }
+  }
+}
+
+const mySubmission = studentEval?.submissions[0] ?? null;
+const myRepoError = studentEval?.errors[0] ?? null;
 ---
 
-<ConsoleLayout title={owned ? assignment!.title : "Not found"} username={session.githubUsername}>
+<ConsoleLayout title={found ? assignment!.title : "Not found"} username={session.githubUsername}>
   {
-    !owned ? (
+    !found ? (
       <NotFound />
-    ) : (
+    ) : owned ? (
       <div class="space-y-6">
         <header>
           <h1 class="text-xl font-semibold">{assignment!.title}</h1>
@@ -81,6 +146,71 @@ if (owned) {
             initial={evaluation}
             graderRepo={assignment!.graderRepo}
           />
+        )}
+      </div>
+    ) : (
+      <div class="space-y-6">
+        <header>
+          <h1 class="text-xl font-semibold">{assignment!.title}</h1>
+          <p class="text-sm text-muted-foreground">
+            {classroom!.name} &middot; {classroom!.githubOrg} &middot; {assignment!.deadlineAt ? `due ${assignment!.deadlineAt}` : "no deadline"}
+          </p>
+        </header>
+
+        {!repo ? (
+          <AcceptPanel
+            client:load
+            assignmentId={assignment!.id}
+            enrolled={student !== null}
+            rosterOptions={rosterOptions}
+          />
+        ) : (
+          <div class="space-y-4">
+            <p class="text-sm">
+              Your repo:{" "}
+              <a href={repoUrlFor(classroom!.githubOrg, repo.repoName)} class="underline">
+                {classroom!.githubOrg}/{repo.repoName}
+              </a>
+            </p>
+
+            {assignment!.deadlineAt === null && (
+              <p class="text-sm text-muted-foreground">This assignment has no deadline.</p>
+            )}
+            {assignment!.deadlineAt !== null && !deadlinePassed && (
+              <p class="text-sm text-muted-foreground">Not due yet — keep pushing to your repo.</p>
+            )}
+
+            {studentEvalError && (
+              <p role="alert" class="text-sm text-destructive">{studentEvalError}</p>
+            )}
+            {myRepoError && (
+              <p role="alert" class="text-sm text-destructive">
+                Couldn't read your repo on GitHub ({myRepoError.message}). Reload to retry.
+              </p>
+            )}
+
+            {mySubmission && (
+              <div class="space-y-1 text-sm">
+                <p>
+                  Status:
+                  <span class={`ml-1 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${statusBadgeClass(mySubmission.status)}`}>
+                    {mySubmission.status ?? "—"}
+                  </span>
+                </p>
+                <p>
+                  Deadline commit: <code>{shortSha(mySubmission.deadlineSha)}</code>
+                  <span class="ml-2 text-xs text-muted-foreground">{mySubmission.deadlineCommitAt ?? ""}</span>
+                </p>
+                <p>
+                  Latest commit: <code>{shortSha(mySubmission.latestSha)}</code>
+                  <span class="ml-2 text-xs text-muted-foreground">{mySubmission.latestCommitAt ?? ""}</span>
+                </p>
+                <p class="text-xs text-muted-foreground">Evaluated at {mySubmission.evaluatedAt}</p>
+              </div>
+            )}
+
+            <ResyncButton client:load assignmentId={assignment!.id} />
+          </div>
         )}
       </div>
     )

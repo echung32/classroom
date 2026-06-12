@@ -2,6 +2,7 @@
 import { getEnv } from "../lib/config";
 import { requireSession } from "../lib/auth/require";
 import { listClassroomsByOwner } from "../lib/db/classrooms";
+import { listAssignmentsForStudentUser } from "../lib/db/assignments";
 import ConsoleLayout from "../layouts/ConsoleLayout.astro";
 import CreateClassroomForm from "../components/CreateClassroomForm";
 
@@ -9,6 +10,7 @@ const env = getEnv();
 const session = await requireSession(Astro.cookies, env.SESSION_SECRET);
 const error = Astro.url.searchParams.get("error");
 const classrooms = session ? await listClassroomsByOwner(env.DB, session.userId) : [];
+const myAssignments = session ? await listAssignmentsForStudentUser(env.DB, session.userId) : [];
 ---
 
 <ConsoleLayout title="Classroom" username={session?.githubUsername}>
@@ -32,6 +34,26 @@ const classrooms = session ? await listClassroomsByOwner(env.DB, session.userId)
             ))}
           </ul>
         </section>
+        {myAssignments.length > 0 && (
+          <section>
+            <h2 class="mb-3 text-xl font-semibold">My assignments</h2>
+            <ul class="space-y-2">
+              {myAssignments.map((a) => (
+                <li class="rounded-lg border p-4">
+                  <a href={`/assignments/${a.assignmentId}`} class="font-medium underline">
+                    {a.title}
+                  </a>
+                  <span class="ml-2 text-sm text-muted-foreground">
+                    {a.classroomName} &middot; {a.deadlineAt ? `due ${a.deadlineAt}` : "no deadline"}
+                  </span>
+                  <span
+                    class={`ml-2 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${a.accepted ? "bg-green-600 text-white" : "bg-gray-200 text-gray-700"}`}
+                  >{a.accepted ? "accepted" : "not accepted"}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <CreateClassroomForm client:load />
       </div>
     ) : (

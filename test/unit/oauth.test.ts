@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import {
   STATE_COOKIE_NAME,
   STATE_TTL_SECONDS,
+  RETURN_TO_COOKIE_NAME,
   buildAuthorizeUrl,
   createState,
   exchangeCode,
   fetchAuthenticatedUser,
+  sanitizeReturnTo,
   verifyState,
 } from "../../src/lib/auth/oauth";
 
@@ -107,5 +109,40 @@ describe("fetchAuthenticatedUser", () => {
     const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://api.github.com/user");
     expect((init.headers as Record<string, string>).authorization).toBe("Bearer gho_abc");
+  });
+});
+
+describe("sanitizeReturnTo", () => {
+  it("passes a same-origin path through", () => {
+    expect(sanitizeReturnTo("/assignments/abc-123")).toBe("/assignments/abc-123");
+  });
+
+  it("falls back to / for an absolute URL", () => {
+    expect(sanitizeReturnTo("https://evil.com/phish")).toBe("/");
+  });
+
+  it("falls back to / for protocol-relative URLs (slash and backslash forms)", () => {
+    expect(sanitizeReturnTo("//evil.com")).toBe("/");
+    expect(sanitizeReturnTo("/\\evil.com")).toBe("/");
+  });
+
+  it("falls back to / for empty and missing values", () => {
+    expect(sanitizeReturnTo("")).toBe("/");
+    expect(sanitizeReturnTo(null)).toBe("/");
+    expect(sanitizeReturnTo(undefined)).toBe("/");
+  });
+
+  it("falls back to / for whitespace-embedded protocol-relative paths", () => {
+    expect(sanitizeReturnTo("/\t/evil.com")).toBe("/");
+    expect(sanitizeReturnTo("/\t\t//evil.com")).toBe("/");
+  });
+
+  it("preserves query strings and fragments on same-origin paths", () => {
+    expect(sanitizeReturnTo("/assignments/abc?ref=invite")).toBe("/assignments/abc?ref=invite");
+    expect(sanitizeReturnTo("/assignments/abc#section")).toBe("/assignments/abc#section");
+  });
+
+  it("exports the return-to cookie name", () => {
+    expect(RETURN_TO_COOKIE_NAME).toBe("return_to");
   });
 });
