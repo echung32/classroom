@@ -59,6 +59,7 @@ describe("GET /assignments/:id", () => {
     const response = await SELF.fetch(`https://example.com/assignments/${assignment.id}`, {
       headers: { cookie },
     });
+    expect(response.status).toBe(200);
     const html = await response.text();
     expect(html).toContain("not due yet");
   });

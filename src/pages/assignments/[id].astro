@@ -37,7 +37,8 @@ if (owned) {
       now: new Date().toISOString(),
       refresh: false,
     });
-  } catch {
+  } catch (err) {
+    console.error("assignment page evaluation failed:", err instanceof Error ? err.message : String(err));
     evalError = "Evaluating submissions failed (GitHub unreachable). Reload to retry.";
   }
 }
