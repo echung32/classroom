@@ -73,4 +73,75 @@ describe("StatusBoard", () => {
     expect(await screen.findByText("No evaluated submission for that student")).toBeTruthy();
     expect(screen.getByLabelText("Decision for alice").textContent).toContain("At deadline");
   });
+
+  it("Refresh replaces rows from the POST /refresh response", async () => {
+    const refreshed: EvalResult = {
+      dueState: "evaluated",
+      submissions: [
+        {
+          ...makeInitial().submissions[0]!,
+          status: "late",
+          latestSha: "ffff000011112222",
+        },
+      ],
+      errors: [{ studentId: "s2", repoName: "hw1-bob", message: "GitHub request failed (404)" }],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(200, { data: { assignmentId: "a1", ...refreshed } })),
+    );
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    render(<StatusBoard assignmentId="a1" initial={makeInitial()} graderRepo={null} />);
+    await user.click(screen.getByRole("button", { name: "Refresh" }));
+
+    expect(await screen.findByText("late")).toBeTruthy();
+    expect(screen.getByText("ffff000")).toBeTruthy();
+    expect(screen.getByText(/hw1-bob/)).toBeTruthy();
+  });
+
+  it("Build grader renders the included/skipped result panel", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse(200, {
+          data: {
+            assignmentId: "a1",
+            graderRepo: "my-org/grader-hw1",
+            htmlUrl: "https://github.com/my-org/grader-hw1",
+            commitSha: "9999888877776666",
+            included: [{ username: "alice", sha: "aaaa111122223333", source: "deadline" }],
+            skipped: [{ username: "bob", studentId: "s2", reason: "excluded" }],
+          },
+        }),
+      ),
+    );
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    render(<StatusBoard assignmentId="a1" initial={makeInitial()} graderRepo={null} />);
+    await user.click(screen.getByRole("button", { name: "Build grader" }));
+
+    expect(await screen.findByText("my-org/grader-hw1")).toBeTruthy();
+    expect(screen.getByText(/alice — deadline/)).toBeTruthy();
+    expect(screen.getByText(/bob — excluded/)).toBeTruthy();
+  });
+
+  it("Build grader surfaces a 400 error in the panel", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse(400, {
+          error: { message: "Cannot build a grader before the assignment deadline has passed" },
+        }),
+      ),
+    );
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    render(<StatusBoard assignmentId="a1" initial={makeInitial()} graderRepo={null} />);
+    await user.click(screen.getByRole("button", { name: "Build grader" }));
+
+    expect(
+      await screen.findByText("Cannot build a grader before the assignment deadline has passed"),
+    ).toBeTruthy();
+  });
 });
