@@ -22,9 +22,9 @@ describe("statusBadgeClass", () => {
   it("maps each status to its color classes", () => {
     expect(statusBadgeClass("on_time")).toContain("green");
     expect(statusBadgeClass("late")).toContain("amber");
-    expect(statusBadgeClass("missing")).toContain("gray");
-    expect(statusBadgeClass("pending")).toContain("gray");
-    expect(statusBadgeClass(null)).toContain("gray");
+    expect(statusBadgeClass("missing")).toContain("bg-gray-500");
+    expect(statusBadgeClass("pending")).toContain("bg-gray-200");
+    expect(statusBadgeClass(null)).toContain("bg-gray-200");
   });
 });
 

@@ -64,4 +64,16 @@ describe("apiFetch", () => {
     expect(err.message).toBe("Request failed (502)");
     expect(err.status).toBe(502);
   });
+
+  it("throws ApiError on a 2xx with a non-JSON body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, status: 200, json: async () => { throw new Error("not json"); } })),
+    );
+
+    const err = (await apiFetch("/api/x", { method: "POST" }).catch((e) => e)) as ApiError;
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.message).toBe("Unexpected non-JSON response (200)");
+    expect(err.status).toBe(200);
+  });
 });

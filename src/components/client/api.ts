@@ -40,5 +40,8 @@ export async function apiFetch<T = unknown>(
       payload?.error?.fields,
     );
   }
-  return payload!.data as T;
+  if (payload === null) {
+    throw new ApiError(`Unexpected non-JSON response (${res.status})`, res.status);
+  }
+  return payload.data as T;
 }
