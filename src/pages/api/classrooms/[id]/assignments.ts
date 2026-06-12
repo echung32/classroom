@@ -22,7 +22,6 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
       title: body.title,
       templateRepo: body.template_repo,
       deadlineAt: body.deadline_at,
-      graceMinutes: body.grace_minutes,
     });
     return json(assignment, 201);
   } catch (err) {
