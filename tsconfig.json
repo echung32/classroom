@@ -1,0 +1,8 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "skipLibCheck": true
+  },
+  "include": [".astro/types.d.ts", "src/**/*", "test/unit/**/*"],
+  "exclude": ["dist", "node_modules", "test/integration"]
+}
