@@ -1,29 +1,35 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "classroom",
-  // @astrojs/cloudflare v13 builds via @cloudflare/vite-plugin and supplies the
-  // Worker entry as a package export. The adapter injects `main` automatically
-  // (the @astrojs/cloudflare/entrypoints/server export); we declare it here so
-  // `wrangler dev`/`deploy`/`d1` against this config can resolve the entry too.
-  // Note: it is a package specifier, NOT a built file path — the build output
-  // lives in ./dist/server (entry.mjs) and ./dist/client, not ./dist/_worker.js.
-  "main": "@astrojs/cloudflare/entrypoints/server",
-  "compatibility_date": "2026-06-01",
-  "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "binding": "ASSETS",
-    "directory": "./dist/client"
-  },
-  "observability": { "enabled": true },
-  "vars": {
-    "DEBUG_ROUTES": "0"
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "classroom",
-      "database_id": "REPLACE_AFTER_WRANGLER_D1_CREATE",
-      "migrations_dir": "migrations"
-    }
-  ]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "classroom",
+	// @astrojs/cloudflare v13 builds via @cloudflare/vite-plugin and supplies the
+	// Worker entry as a package export. The adapter injects `main` automatically
+	// (the @astrojs/cloudflare/entrypoints/server export); we declare it here so
+	// `wrangler dev`/`deploy`/`d1` against this config can resolve the entry too.
+	// Note: it is a package specifier, NOT a built file path — the build output
+	// lives in ./dist/server (entry.mjs) and ./dist/client, not ./dist/_worker.js.
+	"main": "@astrojs/cloudflare/entrypoints/server",
+	"compatibility_date": "2026-06-01",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"assets": {
+		"binding": "ASSETS",
+		"directory": "./dist/client"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"vars": {
+		"DEBUG_ROUTES": "0"
+	},
+	"workers_dev": true,
+	"preview_urls": false,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "icspp-classroom",
+			"database_id": "ad02ebc3-9016-4c87-bd37-9f2a7264aef2",
+			"migrations_dir": "./migrations"
+		}
+	]
 }

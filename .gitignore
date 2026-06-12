@@ -22,3 +22,7 @@ dist/
 .wrangler/
 .dev.vars
 worker-configuration.d.ts
+.env
+
+# github
+github-app.pkcs8.pem
