@@ -68,5 +68,39 @@ export async function githubOutbound(request: Request): Promise<Response> {
     return jsonResponse(201, { html_url: `https://github.com/${owner}/${name}/invitations` });
   }
 
+  // Commits read for deadline evaluation. Deterministic by repo name (mirrors
+  // the "member" convention above): a repo name containing "late" has its
+  // latest commit AFTER the deadline; "missing" has only the single
+  // template-import commit (no student commits); anything else ("ontime") has
+  // its latest commit BEFORE the deadline. Tests seed deadline_at = the fixed
+  // DEADLINE below. The `until=` request returns the last commit at-or-before
+  // the deadline (the pinned deadline SHA).
+  const commits = path.match(/^\/repos\/([^/]+)\/([^/]+)\/commits$/);
+  if (method === "GET" && commits) {
+    const repo = commits[2];
+    const until = url.searchParams.has("until");
+    const mk = (sha: string, date: string) => ({ sha, commit: { committer: { date } } });
+    const BEFORE = "2025-12-31T00:00:00Z"; // before DEADLINE 2026-01-01T00:00:00Z
+    const AFTER = "2026-02-01T00:00:00Z"; //  after  DEADLINE
+    const TEMPLATE = "2025-12-30T00:00:00Z";
+
+    if (/deleted/i.test(repo)) {
+      // Simulates a repo deleted after acceptance: the commits read 404s, which
+      // the orchestrator captures as a per-repo error without aborting the rest.
+      return jsonResponse(404, { message: "Not Found" });
+    }
+    if (/missing/i.test(repo)) {
+      // Only the template-import commit (length 1 → hasStudentCommits false).
+      return jsonResponse(200, [mk("template-sha", TEMPLATE)]);
+    }
+    if (/late/i.test(repo)) {
+      if (until) return jsonResponse(200, [mk("deadline-late-sha", BEFORE)]);
+      return jsonResponse(200, [mk("latest-late-sha", AFTER), mk("template-sha", TEMPLATE)]);
+    }
+    // ontime (default)
+    if (until) return jsonResponse(200, [mk("deadline-ontime-sha", BEFORE)]);
+    return jsonResponse(200, [mk("latest-ontime-sha", BEFORE), mk("template-sha", TEMPLATE)]);
+  }
+
   return new Response(`unmocked GitHub request in test: ${method} ${path}`, { status: 501 });
 }

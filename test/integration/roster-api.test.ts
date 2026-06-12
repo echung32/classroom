@@ -21,7 +21,6 @@ describe("GET /api/assignments/:id/roster", () => {
       title: "HW 1",
       templateRepo: "test-org/hw1-template",
       deadlineAt: undefined,
-      graceMinutes: 0,
     });
 
     const student = await seedUserAndCookie({ githubId: 2, login: "student" });

@@ -39,7 +39,7 @@ describe("parseBody + classroomSchema", () => {
 });
 
 describe("parseBody + assignmentSchema", () => {
-  it("accepts valid input and defaults grace_minutes to 0", async () => {
+  it("accepts valid input with no optional fields", async () => {
     const out = await parseBody(
       req({ slug: "hw1", title: "Homework 1", template_repo: "my-org/hw1-template" }),
       assignmentSchema,
@@ -48,23 +48,20 @@ describe("parseBody + assignmentSchema", () => {
       slug: "hw1",
       title: "Homework 1",
       template_repo: "my-org/hw1-template",
-      grace_minutes: 0,
     });
   });
 
-  it("accepts an optional ISO-8601 UTC deadline and positive grace", async () => {
+  it("accepts an optional ISO-8601 UTC deadline", async () => {
     const out = await parseBody(
       req({
         slug: "hw1",
         title: "Homework 1",
         template_repo: "my-org/hw1-template",
         deadline_at: "2026-09-01T23:59:00Z",
-        grace_minutes: 15,
       }),
       assignmentSchema,
     );
     expect(out.deadline_at).toBe("2026-09-01T23:59:00Z");
-    expect(out.grace_minutes).toBe(15);
   });
 
   it("rejects an invalid slug", async () => {
@@ -83,13 +80,7 @@ describe("parseBody + assignmentSchema", () => {
     expect(err.fields).toHaveProperty("template_repo");
   });
 
-  it("rejects a negative grace_minutes and a non-ISO deadline", async () => {
-    const neg = await parseBody(
-      req({ slug: "hw1", title: "t", template_repo: "o/n", grace_minutes: -1 }),
-      assignmentSchema,
-    ).catch((e) => e);
-    expect(neg.fields).toHaveProperty("grace_minutes");
-
+  it("rejects a non-ISO deadline", async () => {
     const bad = await parseBody(
       req({ slug: "hw1", title: "t", template_repo: "o/n", deadline_at: "September 1st" }),
       assignmentSchema,

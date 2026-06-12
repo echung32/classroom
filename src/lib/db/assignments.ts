@@ -8,7 +8,6 @@ export interface Assignment {
   title: string;
   templateRepo: string;
   deadlineAt: string | null;
-  graceMinutes: number;
   status: string;
   graderRepo: string | null;
   closedAt: string | null;
@@ -22,7 +21,6 @@ interface AssignmentRow {
   title: string;
   template_repo: string;
   deadline_at: string | null;
-  grace_minutes: number;
   status: string;
   grader_repo: string | null;
   closed_at: string | null;
@@ -37,7 +35,6 @@ function toAssignment(row: AssignmentRow): Assignment {
     title: row.title,
     templateRepo: row.template_repo,
     deadlineAt: row.deadline_at,
-    graceMinutes: row.grace_minutes,
     status: row.status,
     graderRepo: row.grader_repo,
     closedAt: row.closed_at,
@@ -53,14 +50,13 @@ export async function createAssignment(
     title: string;
     templateRepo: string;
     deadlineAt?: string;
-    graceMinutes: number;
   },
 ): Promise<Assignment> {
   try {
     const row = await db
       .prepare(
-        `INSERT INTO assignments (id, classroom_id, slug, title, template_repo, deadline_at, grace_minutes)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+        `INSERT INTO assignments (id, classroom_id, slug, title, template_repo, deadline_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)
          RETURNING *`,
       )
       .bind(
@@ -70,7 +66,6 @@ export async function createAssignment(
         input.title,
         input.templateRepo,
         input.deadlineAt ?? null,
-        input.graceMinutes,
       )
       .first<AssignmentRow>();
     if (!row) throw new Error("createAssignment: INSERT ... RETURNING produced no row");
