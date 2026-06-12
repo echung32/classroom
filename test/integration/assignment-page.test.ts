@@ -227,4 +227,45 @@ describe("GET /assignments/:id — student view", () => {
     expect(html).toContain("https://github.com/test-org/hw1-deleted");
     expect(html).toContain("read your repo");
   });
+
+  it("post-deadline: evaluates and freezes ONLY the viewing student, never classmates", async () => {
+    const seeded = await seedAcceptedStudent({
+      githubId: 36,
+      login: "viewer36",
+      repoSuffix: "ontime",
+      deadlineAt: PAST_DEADLINE,
+    });
+    // A classmate with their own accepted repo (mock convention: "late" repo).
+    const other = await seedUserAndCookie({ githubId: 37, login: "classmate37" });
+    const otherStudent = await createStudent(env.DB, {
+      classroomId: seeded.classroom.id,
+      userId: other.user.id,
+      githubUsername: "classmate37",
+    });
+    await recordRepo(env.DB, {
+      assignmentId: seeded.assignment.id,
+      studentId: otherStudent.id,
+      repoName: "hw1-late",
+      repoId: 998,
+    });
+
+    const response = await SELF.fetch(`https://example.com/assignments/${seeded.assignment.id}`, {
+      headers: { cookie: seeded.studentCookie },
+    });
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    // Viewer's own status renders; the classmate's repo/identity/status do not.
+    expect(html).toContain("on_time");
+    expect(html).not.toContain("hw1-late");
+    expect(html).not.toContain("classmate37");
+    expect(html).not.toContain(">late<");
+
+    // No freeze side effect for the classmate — only the viewer's row exists.
+    const rows = await env.DB.prepare(
+      "SELECT student_id FROM submissions WHERE assignment_id = ?1",
+    )
+      .bind(seeded.assignment.id)
+      .all<{ student_id: string }>();
+    expect(rows.results.map((r) => r.student_id)).toEqual([seeded.student.id]);
+  });
 });
