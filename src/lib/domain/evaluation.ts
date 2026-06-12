@@ -168,6 +168,12 @@ export async function evaluateAssignmentSubmissions(
     } catch (err) {
       // A single repo's GitHub failure (404 deleted, transient) is captured and
       // does not abort the others. Non-GitHub errors propagate.
+      //
+      // Every per-repo GitHubApiError (any status) is captured here, so a per-repo
+      // read never surfaces as a 502. The only GitHubApiError that reaches a 502
+      // (via toResponse) is the installation-token mint in the endpoints, which
+      // runs OUTSIDE this loop. This reconciles design spec §6 (per-repo errors
+      // recorded in the response) with §8.3 (non-per-repo GitHub failure → 502).
       if (err instanceof GitHubApiError) {
         errors.push({
           studentId: repo.studentId,

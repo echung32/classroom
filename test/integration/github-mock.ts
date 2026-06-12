@@ -84,6 +84,11 @@ export async function githubOutbound(request: Request): Promise<Response> {
     const AFTER = "2026-02-01T00:00:00Z"; //  after  DEADLINE
     const TEMPLATE = "2025-12-30T00:00:00Z";
 
+    if (/deleted/i.test(repo)) {
+      // Simulates a repo deleted after acceptance: the commits read 404s, which
+      // the orchestrator captures as a per-repo error without aborting the rest.
+      return jsonResponse(404, { message: "Not Found" });
+    }
     if (/missing/i.test(repo)) {
       // Only the template-import commit (length 1 → hasStudentCommits false).
       return jsonResponse(200, [mk("template-sha", TEMPLATE)]);

@@ -125,6 +125,47 @@ describe("GET /api/assignments/:id/submissions", () => {
     const { assignment } = await seedBoard({ deadlineAt: PAST_DEADLINE, githubId: 5 });
     expect((await getBoard(assignment.id)).status).toBe(401);
   });
+
+  it("classifies template-only repos as missing and isolates a deleted repo's error", async () => {
+    const { teacher, classroom, assignment } = await seedBoard({ deadlineAt: PAST_DEADLINE, githubId: 7 });
+
+    // Add two more repos to the same assignment: a template-only one (→ missing)
+    // and one whose commits read 404s (deleted after acceptance → per-repo error).
+    // `seq` keeps githubId/repoId unique: "missing" and "deleted" are both 7 chars,
+    // so a length-derived id would collide (same user enrolled twice → 409).
+    async function addRepo(username: string, seq: number) {
+      const u = await seedUserAndCookie({ githubId: 7000 + seq, login: username });
+      const student = await createStudent(env.DB, {
+        classroomId: classroom.id,
+        userId: u.user.id,
+        githubUsername: username,
+      });
+      await recordRepo(env.DB, {
+        assignmentId: assignment.id,
+        studentId: student.id,
+        repoName: `hw1-${username}`,
+        repoId: 7000 + seq,
+      });
+      return student;
+    }
+    const missing = await addRepo("missing", 1);
+    const deleted = await addRepo("deleted", 2);
+
+    const body = (await (await getBoard(assignment.id, teacher.cookie)).json()) as Board;
+    const byStudent = Object.fromEntries(body.data.submissions.map((s) => [s.studentId, s]));
+
+    // Template-only repo → missing, but deadline_sha is still pinned to the
+    // template commit (the correct deadline-state to grade).
+    expect(byStudent[missing.id].status).toBe("missing");
+    expect(byStudent[missing.id].deadlineSha).toBe("template-sha");
+
+    // The deleted repo is NOT frozen (no submission row); it surfaces in errors[]
+    // while the other repos are still evaluated.
+    expect(byStudent[deleted.id]).toBeUndefined();
+    expect(
+      body.data.errors.some((e) => (e as { repoName: string }).repoName === "hw1-deleted"),
+    ).toBe(true);
+  });
 });
 
 describe("POST /api/assignments/:id/submissions/refresh", () => {
