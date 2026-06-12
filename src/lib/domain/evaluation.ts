@@ -19,8 +19,10 @@ interface RepoLite {
 interface SubmissionLite {
   deadlineSha: string | null;
   deadlineCommitAt: string | null;
+  latestSha: string | null;
   latestCommitAt: string | null;
   status: string;
+  gradeDecision: string;
   evaluatedAt: string | null;
 }
 
@@ -58,7 +60,9 @@ export interface SubmissionView {
   status: string | null;
   deadlineSha: string | null;
   deadlineCommitAt: string | null;
+  latestSha: string | null;
   latestCommitAt: string | null;
+  gradeDecision: string;
   evaluatedAt: string | null;
 }
 
@@ -76,7 +80,9 @@ function blankView(repo: RepoLite, status: string | null): SubmissionView {
     status,
     deadlineSha: null,
     deadlineCommitAt: null,
+    latestSha: null,
     latestCommitAt: null,
+    gradeDecision: "at_deadline",
     evaluatedAt: null,
   };
 }
@@ -89,7 +95,9 @@ function rowView(repo: RepoLite, row: SubmissionLite): SubmissionView {
     status: row.status,
     deadlineSha: row.deadlineSha,
     deadlineCommitAt: row.deadlineCommitAt,
+    latestSha: row.latestSha,
     latestCommitAt: row.latestCommitAt,
+    gradeDecision: row.gradeDecision,
     evaluatedAt: row.evaluatedAt,
   };
 }
