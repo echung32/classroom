@@ -36,10 +36,6 @@ export const assignmentSchema = v.object({
   deadline_at: v.optional(
     v.pipe(v.string(), v.isoTimestamp("deadline_at must be an ISO-8601 UTC timestamp")),
   ),
-  grace_minutes: v.optional(
-    v.pipe(v.number(), v.integer("grace_minutes must be an integer"), v.minValue(0, "grace_minutes must be >= 0")),
-    0,
-  ),
 });
 
 export type ClassroomBody = v.InferOutput<typeof classroomSchema>;
