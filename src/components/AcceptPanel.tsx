@@ -21,12 +21,14 @@ interface Props {
   /** True when the user already has a student row in this classroom (claimed earlier). */
   enrolled: boolean;
   rosterOptions: { id: string; rosterIdentifier: string | null }[];
+  /** Called when the user clicks Continue after success; defaults to a full reload. */
+  onSuccess?: () => void;
 }
 
 /** Sentinel Select value for "I'm not on the list" (Radix forbids empty item values). */
 const SKIP_VALUE = "__skip__";
 
-export default function AcceptPanel({ assignmentId, enrolled, rosterOptions }: Props) {
+export default function AcceptPanel({ assignmentId, enrolled, rosterOptions, onSuccess = () => location.reload() }: Props) {
   const [selection, setSelection] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +84,7 @@ export default function AcceptPanel({ assignmentId, enrolled, rosterOptions }: P
             to get push access.
           </p>
         )}
-        <Button onClick={() => location.reload()}>Continue</Button>
+        <Button onClick={onSuccess}>Continue</Button>
       </div>
     );
   }
@@ -93,7 +95,7 @@ export default function AcceptPanel({ assignmentId, enrolled, rosterOptions }: P
         <div className="space-y-1">
           <Label>Who are you?</Label>
           <Select value={selection} onValueChange={setSelection}>
-            <SelectTrigger aria-label="Roster name" className="w-64">
+            <SelectTrigger aria-label="Who are you?" className="w-64">
               <SelectValue placeholder="Select your name" />
             </SelectTrigger>
             <SelectContent>

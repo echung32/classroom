@@ -33,9 +33,10 @@ describe("AcceptPanel", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup({ pointerEventsCheck: 0 });
+    const onSuccess = vi.fn();
 
-    render(<AcceptPanel assignmentId="a1" enrolled={false} rosterOptions={rosterOptions} />);
-    await user.click(screen.getByLabelText("Roster name"));
+    render(<AcceptPanel assignmentId="a1" enrolled={false} rosterOptions={rosterOptions} onSuccess={onSuccess} />);
+    await user.click(screen.getByLabelText("Who are you?"));
     await user.click(screen.getByRole("option", { name: "Ada Lovelace" }));
     await user.click(screen.getByRole("button", { name: "Accept assignment" }));
 
@@ -48,7 +49,8 @@ describe("AcceptPanel", () => {
     );
     expect(await screen.findByText("https://github.com/test-org/hw1-ada")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Accept the invite on GitHub" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Continue" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(onSuccess).toHaveBeenCalled();
   });
 
   it('skip path: "I\'m not on the list" sends no rosterStudentId', async () => {
@@ -61,7 +63,7 @@ describe("AcceptPanel", () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
 
     render(<AcceptPanel assignmentId="a1" enrolled={false} rosterOptions={rosterOptions} />);
-    await user.click(screen.getByLabelText("Roster name"));
+    await user.click(screen.getByLabelText("Who are you?"));
     await user.click(screen.getByRole("option", { name: "I'm not on the list" }));
     await user.click(screen.getByRole("button", { name: "Accept assignment" }));
 
@@ -82,7 +84,7 @@ describe("AcceptPanel", () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
 
     render(<AcceptPanel assignmentId="a1" enrolled={false} rosterOptions={rosterOptions} />);
-    await user.click(screen.getByLabelText("Roster name"));
+    await user.click(screen.getByLabelText("Who are you?"));
     await user.click(screen.getByRole("option", { name: "Bob Smith" }));
     await user.click(screen.getByRole("button", { name: "Accept assignment" }));
 
@@ -115,7 +117,7 @@ describe("AcceptPanel", () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
 
     render(<AcceptPanel assignmentId="a1" enrolled={true} rosterOptions={[]} />);
-    expect(screen.queryByLabelText("Roster name")).toBeNull();
+    expect(screen.queryByLabelText("Who are you?")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Accept assignment" }));
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -123,5 +125,21 @@ describe("AcceptPanel", () => {
       expect.objectContaining({ method: "POST", body: "{}" }),
     );
     expect(await screen.findByText("https://github.com/test-org/hw1-y")).toBeTruthy();
+  });
+
+  it("ignores a second click while a submit is in flight", async () => {
+    let resolve!: (v: unknown) => void;
+    const fetchMock = vi.fn(() => new Promise((r) => (resolve = r)));
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    render(<AcceptPanel assignmentId="a1" enrolled={true} rosterOptions={[]} />);
+    const button = screen.getByRole("button", { name: "Accept assignment" });
+    await user.click(button);
+    await user.click(screen.getByRole("button", { name: "Accepting…" }));
+    resolve(jsonResponse(201, { data: { repoUrl: "https://github.com/test-org/hw1-z", status: "invited" } }));
+
+    expect(await screen.findByText("https://github.com/test-org/hw1-z")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
