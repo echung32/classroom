@@ -1,4 +1,5 @@
 import type { D1Database } from "@cloudflare/workers-types";
+import { ConflictError } from "../http/errors";
 
 export interface Repo {
   id: string;
@@ -48,16 +49,25 @@ export async function recordRepo(
   db: D1Database,
   input: { assignmentId: string; studentId: string; repoName: string; repoId: number },
 ): Promise<Repo> {
-  const row = await db
-    .prepare(
-      `INSERT INTO repos (id, assignment_id, student_id, repo_name, repo_id, accepted_at, permission_synced_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, datetime('now'), datetime('now'))
-     RETURNING *`,
-    )
-    .bind(crypto.randomUUID(), input.assignmentId, input.studentId, input.repoName, input.repoId)
-    .first<RepoRow>();
-  if (!row) throw new Error("recordRepo: INSERT ... RETURNING produced no row");
-  return toRepo(row);
+  try {
+    const row = await db
+      .prepare(
+        `INSERT INTO repos (id, assignment_id, student_id, repo_name, repo_id, accepted_at, permission_synced_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, datetime('now'), datetime('now'))
+       RETURNING *`,
+      )
+      .bind(crypto.randomUUID(), input.assignmentId, input.studentId, input.repoName, input.repoId)
+      .first<RepoRow>();
+    if (!row) throw new Error("recordRepo: INSERT ... RETURNING produced no row");
+    return toRepo(row);
+  } catch (err) {
+    // UNIQUE(assignment_id, student_id): a concurrent double-accept by the same
+    // student. Map to 409 like the other insert helpers (createStudent, etc.).
+    if (err instanceof Error && /UNIQUE constraint failed/.test(err.message)) {
+      throw new ConflictError("This assignment has already been accepted");
+    }
+    throw err;
+  }
 }
 
 export async function touchPermissionSynced(db: D1Database, repoRowId: string): Promise<void> {
