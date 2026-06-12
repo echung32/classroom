@@ -15,3 +15,10 @@ node_modules
 
 #!.yarn/cache
 .pnp.*
+
+# astro / cloudflare
+dist/
+.astro/
+.wrangler/
+.dev.vars
+worker-configuration.d.ts
