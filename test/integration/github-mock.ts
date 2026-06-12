@@ -102,5 +102,42 @@ export async function githubOutbound(request: Request): Promise<Response> {
     return jsonResponse(200, [mk("latest-ontime-sha", BEFORE), mk("template-sha", TEMPLATE)]);
   }
 
+  // POST /orgs/{org}/repos — create grader repo (echo grader-{slug})
+  const orgRepos = path.match(/^\/orgs\/([^/]+)\/repos$/);
+  if (method === "POST" && orgRepos) {
+    const org = orgRepos[1];
+    const body = (await request.json().catch(() => ({}))) as { name?: string };
+    const name = body.name ?? "grader-repo";
+    return jsonResponse(201, {
+      full_name: `${org}/${name}`,
+      html_url: `https://github.com/${org}/${name}`,
+    });
+  }
+
+  // POST /repos/{o}/{r}/git/trees
+  if (method === "POST" && /^\/repos\/[^/]+\/[^/]+\/git\/trees$/.test(path)) {
+    return jsonResponse(201, { sha: "tree-sha-canned" });
+  }
+
+  // POST /repos/{o}/{r}/git/commits
+  if (method === "POST" && /^\/repos\/[^/]+\/[^/]+\/git\/commits$/.test(path)) {
+    return jsonResponse(201, { sha: "commit-sha-canned" });
+  }
+
+  // GET /repos/{o}/{r}/git/ref/heads/main — convention: 404 = first build
+  if (method === "GET" && /^\/repos\/[^/]+\/[^/]+\/git\/ref\/heads\/main$/.test(path)) {
+    return jsonResponse(404, { message: "Not Found" });
+  }
+
+  // POST /repos/{o}/{r}/git/refs — create main ref
+  if (method === "POST" && /^\/repos\/[^/]+\/[^/]+\/git\/refs$/.test(path)) {
+    return jsonResponse(201, { ref: "refs/heads/main", object: { sha: "commit-sha-canned" } });
+  }
+
+  // PATCH /repos/{o}/{r}/git/refs/heads/main — fast-forward main
+  if (method === "PATCH" && /^\/repos\/[^/]+\/[^/]+\/git\/refs\/heads\/main$/.test(path)) {
+    return jsonResponse(200, { ref: "refs/heads/main", object: { sha: "commit-sha-canned" } });
+  }
+
   return new Response(`unmocked GitHub request in test: ${method} ${path}`, { status: 501 });
 }
