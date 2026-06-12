@@ -61,7 +61,6 @@ describe("GET /api/classrooms/:id", () => {
       slug: "hw1",
       title: "Homework 1",
       templateRepo: "my-org/hw1-template",
-      graceMinutes: 0,
     });
 
     const res = await get(classroom.id, cookie);

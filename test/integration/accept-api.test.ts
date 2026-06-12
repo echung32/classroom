@@ -29,7 +29,6 @@ async function setup(opts: { githubId: number; login: string; seed?: string[] })
     title: "HW 1",
     templateRepo: "test-org/hw1-template",
     deadlineAt: undefined,
-    graceMinutes: 0,
   });
   return { classroom, assignment };
 }

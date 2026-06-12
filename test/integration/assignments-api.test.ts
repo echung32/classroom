@@ -33,12 +33,11 @@ describe("POST /api/classrooms/:id/assignments", () => {
     const res = await postAssignment(classroom.id, VALID, cookie);
     expect(res.status).toBe(201);
     const { data } = (await res.json()) as {
-      data: { slug: string; classroomId: string; status: string; graceMinutes: number };
+      data: { slug: string; classroomId: string; status: string };
     };
     expect(data.slug).toBe("hw1");
     expect(data.classroomId).toBe(classroom.id);
     expect(data.status).toBe("open");
-    expect(data.graceMinutes).toBe(0);
   });
 
   it("rejects a duplicate slug in the same classroom (409)", async () => {
