@@ -143,7 +143,7 @@ export async function listAssignmentsForStudentUser(
     slug: r.slug,
     deadlineAt: r.deadline_at,
     classroomName: r.classroom_name,
-    accepted: r.accepted === 1,
+    accepted: r.accepted !== 0,
   }));
 }
 

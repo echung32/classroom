@@ -169,4 +169,28 @@ describe("listAssignmentsForStudentUser", () => {
     const { user } = await seedUserAndCookie({ githubId: 23, login: "student23" });
     expect(await listAssignmentsForStudentUser(env.DB, user.id)).toEqual([]);
   });
+
+  it("shows assignments from every classroom the student is enrolled in, without duplicates", async () => {
+    const classA = await seedClassroom(30, "teacherA");
+    const classB = await seedClassroom(31, "teacherB");
+    await createAssignment(env.DB, {
+      classroomId: classA.id,
+      slug: "a1",
+      title: "A1",
+      templateRepo: "my-org/t",
+    });
+    await createAssignment(env.DB, {
+      classroomId: classB.id,
+      slug: "b1",
+      title: "B1",
+      templateRepo: "my-org/t",
+    });
+    const { user } = await seedUserAndCookie({ githubId: 32, login: "multi32" });
+    await createStudent(env.DB, { classroomId: classA.id, userId: user.id, githubUsername: "multi32" });
+    await createStudent(env.DB, { classroomId: classB.id, userId: user.id, githubUsername: "multi32" });
+
+    const rows = await listAssignmentsForStudentUser(env.DB, user.id);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.title).sort()).toEqual(["A1", "B1"]);
+  });
 });
