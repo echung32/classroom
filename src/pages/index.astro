@@ -1,8 +1,28 @@
 ---
+import { getEnv } from "../lib/config";
+import { SESSION_COOKIE_NAME, verifySession } from "../lib/auth/session";
+
+const env = getEnv();
+const cookie = Astro.cookies.get(SESSION_COOKIE_NAME)?.value;
+const session = cookie ? await verifySession(cookie, env.SESSION_SECRET) : null;
+const error = Astro.url.searchParams.get("error");
 ---
+
 <html lang="en">
-  <head><meta charset="utf-8" /><title>Classroom</title></head>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Classroom</title>
+  </head>
   <body>
     <h1>Classroom</h1>
+    {error && <p role="alert">Login failed: <code>{error}</code></p>}
+    {
+      session ? (
+        <p>Logged in as <strong>{session.githubUsername}</strong></p>
+      ) : (
+        <p><a href="/auth/login">Log in with GitHub</a></p>
+      )
+    }
   </body>
 </html>
