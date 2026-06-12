@@ -82,6 +82,38 @@ describe("GET /auth/login", () => {
     expect(state).toBeTruthy();
     expect(response.headers.getSetCookie().join("; ")).toContain(`oauth_state=${state}`);
   });
+
+  it("stores a sanitized returnTo in a short-lived httpOnly cookie", async () => {
+    const response = await SELF.fetch(
+      "https://example.com/auth/login?returnTo=" + encodeURIComponent("/assignments/abc"),
+      { redirect: "manual" },
+    );
+    expect(response.status).toBe(302);
+
+    const setCookie = response.headers.getSetCookie().find((c) => c.startsWith("return_to="));
+    expect(setCookie).toBeDefined();
+    expect(decodeURIComponent(setCookie!.split(";")[0].slice("return_to=".length))).toBe(
+      "/assignments/abc",
+    );
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("Secure");
+    expect(setCookie).toContain("SameSite=Lax");
+    expect(setCookie).toContain("Max-Age=600");
+  });
+
+  it("does not set the cookie when returnTo is absent or hostile", async () => {
+    const variants = [
+      "",
+      "?returnTo=" + encodeURIComponent("https://evil.com/x"),
+      "?returnTo=" + encodeURIComponent("//evil.com"),
+    ];
+    for (const qs of variants) {
+      const response = await SELF.fetch(`https://example.com/auth/login${qs}`, {
+        redirect: "manual",
+      });
+      expect(response.headers.getSetCookie().some((c) => c.startsWith("return_to="))).toBe(false);
+    }
+  });
 });
 
 describe("GET /auth/callback", () => {
