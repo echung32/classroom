@@ -70,8 +70,10 @@ export default function StatusBoard({ assignmentId, initial, graderRepo }: Props
   const [graderError, setGraderError] = useState<string | null>(null);
 
   async function changeDecision(studentId: string, decision: string) {
-    const prev = rows;
-    setRows(prev.map((r) => (r.studentId === studentId ? { ...r, gradeDecision: decision } : r)));
+    const prevDecision = rows.find((r) => r.studentId === studentId)?.gradeDecision;
+    setRows((cur) =>
+      cur.map((r) => (r.studentId === studentId ? { ...r, gradeDecision: decision } : r)),
+    );
     setRowErrors((e) => ({ ...e, [studentId]: "" }));
     try {
       await apiFetch(`/api/assignments/${assignmentId}/submissions/${studentId}/decision`, {
@@ -79,7 +81,14 @@ export default function StatusBoard({ assignmentId, initial, graderRepo }: Props
         body: { decision },
       });
     } catch (err) {
-      setRows(prev);
+      // Per-row functional revert: never clobbers concurrent refresh/other-row state.
+      setRows((cur) =>
+        cur.map((r) =>
+          r.studentId === studentId && prevDecision !== undefined
+            ? { ...r, gradeDecision: prevDecision }
+            : r,
+        ),
+      );
       setRowErrors((e) => ({
         ...e,
         [studentId]: err instanceof ApiError ? err.message : "Request failed",

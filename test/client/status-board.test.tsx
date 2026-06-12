@@ -126,6 +126,35 @@ describe("StatusBoard", () => {
     expect(screen.getByText(/bob — excluded/)).toBeTruthy();
   });
 
+  it("a failed decision change reverts only the affected row", async () => {
+    const initial: EvalResult = {
+      ...makeInitial(),
+      submissions: [
+        makeInitial().submissions[0]!,
+        {
+          ...makeInitial().submissions[0]!,
+          studentId: "s2",
+          githubUsername: "bob",
+          repoName: "hw1-bob",
+          gradeDecision: "accept_late",
+        },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(404, { error: { message: "No evaluated submission for that student" } })),
+    );
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+
+    render(<StatusBoard assignmentId="a1" initial={initial} graderRepo={null} />);
+    await user.click(screen.getByLabelText("Decision for alice"));
+    await user.click(screen.getByRole("option", { name: "Exclude" }));
+
+    expect(await screen.findByText("No evaluated submission for that student")).toBeTruthy();
+    expect(screen.getByLabelText("Decision for alice").textContent).toContain("At deadline");
+    expect(screen.getByLabelText("Decision for bob").textContent).toContain("Accept late");
+  });
+
   it("Build grader surfaces a 400 error in the panel", async () => {
     vi.stubGlobal(
       "fetch",
