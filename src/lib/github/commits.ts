@@ -7,6 +7,7 @@ interface GitHubCommit {
 
 export interface RepoCommitState {
   latestCommitAt: string | null;
+  latestSha: string | null;
   hasStudentCommits: boolean;
   deadlineSha: string | null;
   deadlineCommitAt: string | null;
@@ -33,6 +34,7 @@ export async function readRepoCommitState(input: {
     { token, fetchImpl },
   );
   const latestCommitAt = latest.data[0]?.commit.committer.date ?? null;
+  const latestSha = latest.data[0]?.sha ?? null;
   const hasStudentCommits = latest.data.length >= 2;
 
   const atDeadline = await githubRequest<GitHubCommit[]>(
@@ -42,5 +44,5 @@ export async function readRepoCommitState(input: {
   const deadlineSha = atDeadline.data[0]?.sha ?? null;
   const deadlineCommitAt = atDeadline.data[0]?.commit.committer.date ?? null;
 
-  return { latestCommitAt, hasStudentCommits, deadlineSha, deadlineCommitAt };
+  return { latestCommitAt, latestSha, hasStudentCommits, deadlineSha, deadlineCommitAt };
 }
