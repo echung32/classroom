@@ -56,10 +56,15 @@ export async function githubOutbound(request: Request): Promise<Response> {
     });
   }
 
-  // Add collaborator: 201 → invitation created (status "invited").
+  // Add collaborator: 201 → invitation created (status "invited"), 204 → already a member.
+  // Test convention: a username containing "member" is treated as already a collaborator
+  // (→ 204), so tests can exercise the resync "already_member" branch deterministically.
   const collab = path.match(/^\/repos\/([^/]+)\/([^/]+)\/collaborators\/([^/]+)$/);
   if (method === "PUT" && collab) {
-    const [, owner, name] = collab;
+    const [, owner, name, username] = collab;
+    if (/member/i.test(username)) {
+      return new Response(null, { status: 204 });
+    }
     return jsonResponse(201, { html_url: `https://github.com/${owner}/${name}/invitations` });
   }
 
