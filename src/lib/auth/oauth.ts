@@ -4,6 +4,17 @@ import { signValue, verifyValue } from "./session";
 export const STATE_COOKIE_NAME = "oauth_state";
 export const STATE_TTL_SECONDS = 600; // 10 minutes
 
+export const RETURN_TO_COOKIE_NAME = "return_to";
+
+/** Same-origin guard for post-login redirects. Returns `value` only when it is
+ *  an absolute same-origin path: starts with "/" but not "//" or "/\" (browsers
+ *  treat both as protocol-relative). Anything else falls back to "/". */
+export function sanitizeReturnTo(value: string | null | undefined): string {
+  if (!value || !value.startsWith("/")) return "/";
+  if (value.startsWith("//") || value.startsWith("/\\")) return "/";
+  return value;
+}
+
 interface StatePayload {
   t: "oauth-state"; // type tag: a signed session can never pass as a state
   nonce: string;
