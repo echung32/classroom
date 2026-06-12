@@ -4,7 +4,7 @@ import { clearInstallationTokenCache } from "../../src/lib/github/app";
 import { createAssignment } from "../../src/lib/db/assignments";
 import { createClassroom } from "../../src/lib/db/classrooms";
 import { getRepoByAssignmentStudent } from "../../src/lib/db/repos";
-import { listStudentsByClassroom } from "../../src/lib/db/students";
+import { createStudent, listStudentsByClassroom } from "../../src/lib/db/students";
 import { seedUserAndCookie } from "./helpers";
 
 beforeEach(() => clearInstallationTokenCache());
@@ -96,6 +96,38 @@ describe("POST /api/assignments/:id/resync", () => {
       headers: { "content-type": "application/json", cookie: student.cookie },
     });
     expect(res.status).toBe(404);
+  });
+
+  it("404s when enrolled but has not accepted (no repo row)", async () => {
+    const teacher = await seedUserAndCookie({ githubId: 90, login: "teacher-enrollednorepo" });
+    const classroom = await createClassroom(env.DB, {
+      name: "CS101",
+      githubOrg: "test-org",
+      timezone: "UTC",
+      createdBy: teacher.user.id,
+    });
+    const assignment = await createAssignment(env.DB, {
+      classroomId: classroom.id,
+      slug: "hw1",
+      title: "HW 1",
+      templateRepo: "test-org/hw1-template",
+      deadlineAt: undefined,
+      graceMinutes: 0,
+    });
+    const student = await seedUserAndCookie({ githubId: 91, login: "enrollednorepo" });
+    await createStudent(env.DB, {
+      classroomId: classroom.id,
+      userId: student.user.id,
+      githubUsername: student.user.githubUsername,
+    });
+
+    const res = await SELF.fetch(`https://example.com/api/assignments/${assignment.id}/resync`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: student.cookie },
+    });
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toBe("Accept the assignment first");
   });
 
   it("401s when unauthenticated", async () => {
