@@ -18,3 +18,14 @@ export function normalizeToSlug(s: string): string {
 export function repoNameFor(slug: string, username: string): string {
   return `${slug}-${username.toLowerCase()}`;
 }
+
+/** Split an "owner/name" repo reference into its two parts. */
+export function splitRepo(fullName: string): [owner: string, repo: string] {
+  const slash = fullName.indexOf("/");
+  return [fullName.slice(0, slash), fullName.slice(slash + 1)];
+}
+
+/** Construct a github.com html url for a repo we own. */
+export function repoUrlFor(owner: string, repo: string): string {
+  return `https://github.com/${owner}/${repo}`;
+}

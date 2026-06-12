@@ -1,3 +1,4 @@
+import { GitHubApiError } from "../github/client";
 import { error } from "./json";
 
 /** Request body / slug failed validation. `fields` is per-field messages for a future UI. */
@@ -38,6 +39,11 @@ export function toResponse(err: unknown): Response {
   if (err instanceof ForbiddenError) return error(err.message, 403);
   if (err instanceof NotFoundError) return error(err.message, 404);
   if (err instanceof ConflictError) return error(err.message, 409);
+  if (err instanceof GitHubApiError) {
+    // Log the real upstream detail server-side; never return it (it may contain tokens).
+    console.error("github upstream error:", err.status, err.message);
+    return error("Upstream GitHub request failed", 502);
+  }
   console.error("unhandled endpoint error:", err instanceof Error ? err.message : String(err));
   return error("Internal Server Error", 500);
 }
