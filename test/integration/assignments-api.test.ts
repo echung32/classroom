@@ -77,3 +77,43 @@ describe("POST /api/classrooms/:id/assignments", () => {
     expect(body.error.fields).toHaveProperty("slug");
   });
 });
+
+describe("GET /api/assignments/:id", () => {
+  function getAssignment(id: string, cookie?: string): Promise<Response> {
+    return SELF.fetch(`https://example.com/api/assignments/${id}`, {
+      headers: cookie ? { cookie } : {},
+    });
+  }
+
+  async function createOne() {
+    const { classroom, cookie } = await ownedClassroom();
+    const created = await postAssignment(classroom.id, VALID, cookie);
+    const { data } = (await created.json()) as { data: { id: string } };
+    return { assignmentId: data.id, cookie };
+  }
+
+  it("returns the assignment to its owner (200)", async () => {
+    const { assignmentId, cookie } = await createOne();
+    const res = await getAssignment(assignmentId, cookie);
+    expect(res.status).toBe(200);
+    const { data } = (await res.json()) as { data: { id: string; slug: string } };
+    expect(data.id).toBe(assignmentId);
+    expect(data.slug).toBe("hw1");
+  });
+
+  it("returns 401 when unauthenticated", async () => {
+    const { assignmentId } = await createOne();
+    expect((await getAssignment(assignmentId)).status).toBe(401);
+  });
+
+  it("returns 404 for an unknown assignment id", async () => {
+    const { cookie } = await seedUserAndCookie({ githubId: 9, login: "someone" });
+    expect((await getAssignment("00000000-0000-0000-0000-000000000000", cookie)).status).toBe(404);
+  });
+
+  it("returns 403 when the caller does not own the parent classroom", async () => {
+    const { assignmentId } = await createOne();
+    const { cookie: intruder } = await seedUserAndCookie({ githubId: 2, login: "intruder" });
+    expect((await getAssignment(assignmentId, intruder)).status).toBe(403);
+  });
+});
