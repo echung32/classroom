@@ -27,6 +27,7 @@ export default function CreateClassroomForm({ onSuccess = () => location.reload(
         method: "POST",
         body: { name, github_org: githubOrg, timezone },
       });
+      // busy intentionally stays true until unmount/reload; prevents double-submit
       onSuccess();
     } catch (err) {
       if (err instanceof ApiError) {

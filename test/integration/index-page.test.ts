@@ -1,6 +1,8 @@
 import { SELF, env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import { signSession } from "../../src/lib/auth/session";
+import { createClassroom } from "../../src/lib/db/classrooms";
+import { seedUserAndCookie } from "./helpers";
 
 describe("GET /", () => {
   it("shows a login link when logged out", async () => {
@@ -43,6 +45,22 @@ describe("GET /", () => {
     expect(response.status).toBe(200);
     // The raw, unescaped script tag must NOT appear — Astro must have HTML-escaped it.
     expect(html).not.toContain("<script>alert(1)</script>");
+  });
+
+  it("lists the owner's classrooms with links when logged in", async () => {
+    const { user, cookie } = await seedUserAndCookie({ githubId: 7, login: "teacher" });
+    const classroom = await createClassroom(env.DB, {
+      name: "CS101",
+      githubOrg: "my-org",
+      timezone: "UTC",
+      createdBy: user.id,
+    });
+
+    const response = await SELF.fetch("https://example.com/", { headers: { cookie } });
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain("CS101");
+    expect(html).toContain(`/classrooms/${classroom.id}`);
   });
 });
 
