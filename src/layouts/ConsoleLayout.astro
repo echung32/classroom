@@ -1,0 +1,36 @@
+---
+// src/layouts/ConsoleLayout.astro
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  username?: string | null;
+}
+const { title, username } = Astro.props;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+  </head>
+  <body class="min-h-screen bg-background text-foreground">
+    <header class="border-b">
+      <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+        <a href="/" class="font-semibold">Classroom</a>
+        {
+          username && (
+            <div class="flex items-center gap-3 text-sm">
+              <span>Logged in as <strong>{username}</strong></span>
+              <a href="/auth/logout" class="underline">Log out</a>
+            </div>
+          )
+        }
+      </div>
+    </header>
+    <main class="mx-auto max-w-5xl px-4 py-6">
+      <slot />
+    </main>
+  </body>
+</html>
