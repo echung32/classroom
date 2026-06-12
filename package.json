@@ -1,0 +1,8 @@
+{
+  "name": "classroom",
+  "packageManager": "yarn@4.16.0",
+  "volta": {
+    "node": "24.16.0",
+    "yarn": "4.16.0"
+  }
+}
