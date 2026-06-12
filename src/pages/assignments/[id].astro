@@ -1,0 +1,87 @@
+---
+// src/pages/assignments/[id].astro
+import { getEnv } from "../../lib/config";
+import { requireSession } from "../../lib/auth/require";
+import { getAssignmentById } from "../../lib/db/assignments";
+import { getClassroomById } from "../../lib/db/classrooms";
+import {
+  evaluateAssignmentSubmissions,
+  type EvaluationResult,
+} from "../../lib/domain/evaluation";
+import { getInstallationToken } from "../../lib/github/app";
+import { buildEvaluationDeps } from "../api/assignments/[id]/submissions";
+import ConsoleLayout from "../../layouts/ConsoleLayout.astro";
+import NotFound from "../../components/NotFound.astro";
+import StatusBoard from "../../components/StatusBoard";
+
+const env = getEnv();
+const session = await requireSession(Astro.cookies, env.SESSION_SECRET);
+if (!session) return Astro.redirect("/auth/login");
+
+const assignment = await getAssignmentById(env.DB, Astro.params.id!);
+const classroom = assignment ? await getClassroomById(env.DB, assignment.classroomId) : null;
+const owned = classroom !== null && classroom.createdBy === session.userId;
+if (!owned) Astro.response.status = 404;
+
+let evaluation: EvaluationResult | null = null;
+let evalError: string | null = null;
+if (owned) {
+  try {
+    const token = await getInstallationToken({
+      appId: env.GITHUB_APP_ID,
+      privateKey: env.GITHUB_APP_PRIVATE_KEY,
+      installationId: env.GITHUB_APP_INSTALLATION_ID,
+    });
+    evaluation = await evaluateAssignmentSubmissions(buildEvaluationDeps(env.DB, token), {
+      assignmentId: assignment!.id,
+      now: new Date().toISOString(),
+      refresh: false,
+    });
+  } catch {
+    evalError = "Evaluating submissions failed (GitHub unreachable). Reload to retry.";
+  }
+}
+---
+
+<ConsoleLayout title={owned ? assignment!.title : "Not found"} username={session.githubUsername}>
+  {
+    !owned ? (
+      <NotFound />
+    ) : (
+      <div class="space-y-6">
+        <header>
+          <h1 class="text-xl font-semibold">{assignment!.title}</h1>
+          <p class="text-sm text-muted-foreground">
+            {assignment!.slug} &middot; {assignment!.deadlineAt ? `due ${assignment!.deadlineAt}` : "no deadline"} &middot; {assignment!.status}
+          </p>
+          {assignment!.graderRepo && (
+            <a href={`https://github.com/${assignment!.graderRepo}`} class="text-sm underline">
+              Grader repo: {assignment!.graderRepo}
+            </a>
+          )}
+        </header>
+
+        {evalError && <p role="alert" class="text-sm text-destructive">{evalError}</p>}
+
+        {evaluation?.dueState === "no-deadline" && (
+          <p class="text-sm text-muted-foreground">
+            This assignment has no deadline set, so submissions are never evaluated or frozen.
+          </p>
+        )}
+        {evaluation?.dueState === "pending" && (
+          <p class="text-sm text-muted-foreground">
+            This assignment is not due yet — evaluation happens after the deadline.
+          </p>
+        )}
+        {evaluation?.dueState === "evaluated" && (
+          <StatusBoard
+            client:load
+            assignmentId={assignment!.id}
+            initial={evaluation}
+            graderRepo={assignment!.graderRepo}
+          />
+        )}
+      </div>
+    )
+  }
+</ConsoleLayout>
