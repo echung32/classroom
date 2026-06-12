@@ -54,3 +54,12 @@ export const acceptAssignmentSchema = v.object({
 
 export type SeedRosterBody = v.InferOutput<typeof seedRosterSchema>;
 export type AcceptAssignmentBody = v.InferOutput<typeof acceptAssignmentSchema>;
+
+export const decisionSchema = v.object({
+  decision: v.picklist(
+    ["at_deadline", "accept_late", "exclude"],
+    "decision must be one of at_deadline, accept_late, exclude",
+  ),
+});
+
+export type DecisionBody = v.InferOutput<typeof decisionSchema>;
