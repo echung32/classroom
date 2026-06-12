@@ -52,3 +52,14 @@ export async function getClassroomById(db: D1Database, id: string): Promise<Clas
     .first<ClassroomRow>();
   return row ? toClassroom(row) : null;
 }
+
+export async function listClassroomsByOwner(
+  db: D1Database,
+  userId: string,
+): Promise<Classroom[]> {
+  const { results } = await db
+    .prepare("SELECT * FROM classrooms WHERE created_by = ?1 ORDER BY created_at DESC")
+    .bind(userId)
+    .all<ClassroomRow>();
+  return results.map(toClassroom);
+}
