@@ -21,11 +21,13 @@
   },
   "dependencies": {
     "@astrojs/cloudflare": "^13.7.0",
-    "astro": "^6.4.6"
+    "astro": "^6.4.6",
+    "valibot": "^1.4.1"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.16.15",
     "@cloudflare/workers-types": "^4.20260611.1",
+    "shadcn": "^4.11.0",
     "typescript": "^5.9.0",
     "vitest": "^4.1.8",
     "wrangler": "^4.100.0"
