@@ -9,6 +9,7 @@ import {
   refreshSubmissionStatus,
 } from "../../src/lib/db/submissions";
 import { createStudent } from "../../src/lib/db/students";
+import { listReposWithStudentsByAssignment, recordRepo } from "../../src/lib/db/repos";
 import { seedUserAndCookie } from "./helpers";
 
 async function seed() {
@@ -110,5 +111,25 @@ describe("submissions repository", () => {
     const rows = await listSubmissionsByAssignment(env.DB, assignment.id);
     expect(rows).toHaveLength(1);
     expect(rows[0].studentId).toBe(student.id);
+  });
+});
+
+describe("listReposWithStudentsByAssignment", () => {
+  it("joins repos to their students with github_username", async () => {
+    const { assignment, student } = await seed();
+    await recordRepo(env.DB, {
+      assignmentId: assignment.id,
+      studentId: student.id,
+      repoName: "hw1-alice",
+      repoId: 123,
+    });
+
+    const rows = await listReposWithStudentsByAssignment(env.DB, assignment.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toEqual({
+      studentId: student.id,
+      repoName: "hw1-alice",
+      githubUsername: "alice",
+    });
   });
 });

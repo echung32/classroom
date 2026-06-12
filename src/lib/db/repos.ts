@@ -76,3 +76,31 @@ export async function touchPermissionSynced(db: D1Database, repoRowId: string): 
     .bind(repoRowId)
     .run();
 }
+
+export interface RepoWithStudent {
+  studentId: string;
+  repoName: string;
+  githubUsername: string | null;
+}
+
+/** All accepted repos for an assignment, joined to their students. */
+export async function listReposWithStudentsByAssignment(
+  db: D1Database,
+  assignmentId: string,
+): Promise<RepoWithStudent[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT r.student_id, r.repo_name, s.github_username
+         FROM repos r
+         JOIN students s ON s.id = r.student_id
+        WHERE r.assignment_id = ?1
+        ORDER BY s.github_username ASC`,
+    )
+    .bind(assignmentId)
+    .all<{ student_id: string; repo_name: string; github_username: string | null }>();
+  return results.map((r) => ({
+    studentId: r.student_id,
+    repoName: r.repo_name,
+    githubUsername: r.github_username,
+  }));
+}
