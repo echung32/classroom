@@ -38,3 +38,28 @@ export async function createRepoFromTemplate(input: {
     throw err;
   }
 }
+
+export interface AddCollaboratorResult {
+  status: "invited" | "already_member";
+  invitationUrl?: string;
+}
+
+export async function addCollaborator(input: {
+  token: string;
+  owner: string;
+  repo: string;
+  username: string;
+  permission: string;
+  fetchImpl?: typeof fetch;
+}): Promise<AddCollaboratorResult> {
+  const { token, owner, repo, username, permission, fetchImpl } = input;
+  const { data, status } = await githubRequest<{ html_url?: string } | undefined>(
+    `/repos/${owner}/${repo}/collaborators/${username}`,
+    { method: "PUT", token, body: { permission }, fetchImpl },
+  );
+  // 201 → a repository invitation was created; 204 → already a collaborator.
+  if (status === 201) {
+    return { status: "invited", invitationUrl: data?.html_url };
+  }
+  return { status: "already_member" };
+}
