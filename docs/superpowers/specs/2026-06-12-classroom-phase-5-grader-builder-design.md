@@ -107,13 +107,31 @@ SkippedEntry = { username: string | null, studentId: string, reason: string }
   ```
   (The student repo name `{slug}-{username}` is passed in per entry; `org` is the classroom
   org.)
-- `buildDevcontainer()` → the `.devcontainer/devcontainer.json` text:
+- `buildDevcontainer(entries, org, name)` → the `.devcontainer/devcontainer.json` text.
+  **Critical for GitHub Codespaces:** a Codespace's token only gets access to repositories
+  declared under `customizations.codespaces.repositories`, so without one read entry per
+  student repo the private submodules cannot be cloned. The builder emits one
+  `"{org}/{slug}-{username}": { "permissions": { "contents": "read" } }` entry per
+  **included** entry. Built as a structured JS object and serialized with
+  `JSON.stringify(obj, null, 2)` (safe escaping of `name`, deterministic key order by
+  username — no manual comma-joining):
   ```json
   {
-    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "name": "grader-{slug}",
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+    "features": { "ghcr.io/devcontainers/features/git:1": {} },
+    "customizations": {
+      "codespaces": {
+        "repositories": {
+          "{org}/{slug}-{username}": { "permissions": { "contents": "read" } }
+        }
+      }
+    },
     "postCreateCommand": "git submodule update --init --recursive"
   }
   ```
+  (`postCreateCommand` is retained so opening the grader still initializes the submodules;
+  `name` is the grader repo name `grader-{slug}`.)
 - `buildReadme(assignmentTitle, entries)` → a short top-level `README.md` naming the
   assignment and listing the pinned submissions (informational).
 
@@ -229,7 +247,9 @@ Both resolve the user via the existing `requireUser`, load the assignment, and c
 
 - `test/unit/grader.test.ts` — `selectGraderEntries` across all three decisions, null-SHA
   skip (both `deadline`/`latest`), `no-github-username` skip, and `exclude` omission; the
-  content builders (`.gitmodules` exact text, devcontainer JSON, deterministic ordering).
+  content builders (`.gitmodules` exact text; devcontainer JSON includes one
+  `customizations.codespaces.repositories` read entry per included student repo and the
+  `postCreateCommand`; deterministic ordering).
 - `test/unit/git-data.test.ts` — each wrapper with an injected `fetchImpl` (assert
   URL/method/body); `ensureOrgRepo` 422→GET recovery; `getMainRef` 404→`null`.
 - `test/unit/github-commits.test.ts` — extend to assert `readRepoCommitState` now returns
@@ -281,9 +301,11 @@ state, not call counts (per the harness memory).
 
 - **Frontend (Phase 6):** the UI for reviewing statuses, setting decisions, and triggering a
   build. This phase delivers only the APIs.
-- **Submodule clone auth:** opening the grader and cloning private student submodules relies
-  on the operator's GitHub credentials (devcontainer/Codespace), as in the build plan §6.7.
-  Not our code; documented as an operational note.
+- **Submodule clone auth:** in a **Codespace**, read access to the private student submodules
+  is granted by the `customizations.codespaces.repositories` block the builder writes into
+  `devcontainer.json` (§4.2). For a **local** `git clone --recurse-submodules`, the operator's
+  own GitHub credentials must have read on the student repos (as in the build plan §6.7) —
+  not something the grader file can control; documented as an operational note.
 - **Pin timing for `accept_late`:** the build pins the student's `latest_sha` *as of the
   build* (the most recent evaluation/refresh), not as of the moment the decision was made.
   Acceptable: the build is the teacher's explicit final action. A teacher who wants the very
