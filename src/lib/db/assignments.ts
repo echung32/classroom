@@ -99,3 +99,15 @@ export async function listAssignmentsByClassroom(
     .all<AssignmentRow>();
   return results.map(toAssignment);
 }
+
+/** Mark an assignment's grader as built: record grader_repo and flip status to 'built'. */
+export async function setGraderBuilt(
+  db: D1Database,
+  assignmentId: string,
+  graderRepo: string,
+): Promise<void> {
+  await db
+    .prepare("UPDATE assignments SET grader_repo = ?2, status = 'built' WHERE id = ?1")
+    .bind(assignmentId, graderRepo)
+    .run();
+}

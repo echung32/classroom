@@ -43,6 +43,7 @@ describe("readRepoCommitState", () => {
     );
     expect(state).toEqual({
       latestCommitAt: "2025-12-31T00:00:00Z",
+      latestSha: "latest-sha",
       hasStudentCommits: true,
       deadlineSha: "deadline-sha",
       deadlineCommitAt: "2025-12-31T00:00:00Z",
@@ -82,9 +83,22 @@ describe("readRepoCommitState", () => {
 
     expect(state).toEqual({
       latestCommitAt: null,
+      latestSha: null,
       hasStudentCommits: false,
       deadlineSha: null,
       deadlineCommitAt: null,
     });
+  });
+
+  it("returns latestSha=null for a repo with no commits", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse([]));
+    const state = await readRepoCommitState({
+      token: "ghs_x",
+      owner: "org",
+      repo: "empty",
+      deadlineAt: DEADLINE,
+      fetchImpl,
+    });
+    expect(state.latestSha).toBeNull();
   });
 });
