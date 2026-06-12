@@ -44,3 +44,17 @@ export const assignmentSchema = v.object({
 
 export type ClassroomBody = v.InferOutput<typeof classroomSchema>;
 export type AssignmentBody = v.InferOutput<typeof assignmentSchema>;
+
+export const seedRosterSchema = v.object({
+  identifiers: v.pipe(
+    v.array(v.pipe(v.string(), v.trim(), v.minLength(1, "identifier must not be empty"))),
+    v.minLength(1, "identifiers must contain at least one entry"),
+  ),
+});
+
+export const acceptAssignmentSchema = v.object({
+  rosterStudentId: v.optional(v.pipe(v.string(), v.uuid("rosterStudentId must be a valid id"))),
+});
+
+export type SeedRosterBody = v.InferOutput<typeof seedRosterSchema>;
+export type AcceptAssignmentBody = v.InferOutput<typeof acceptAssignmentSchema>;
