@@ -7,6 +7,7 @@ import {
   verifySession,
   verifyValue,
 } from "../../src/lib/auth/session";
+import { base64UrlEncode } from "../../src/lib/encoding";
 
 const SECRET = "unit-test-secret";
 const NOW = 1_765_000_000; // fixed epoch seconds
@@ -20,8 +21,7 @@ describe("signValue / verifyValue", () => {
   it("rejects a tampered body", async () => {
     const signed = await signValue({ role: "student" }, SECRET);
     const [body, sig] = signed.split(".");
-    const forgedBody = Buffer.from(JSON.stringify({ role: "teacher" }))
-      .toString("base64url");
+    const forgedBody = base64UrlEncode(new TextEncoder().encode(JSON.stringify({ role: "teacher" })));
     expect(await verifyValue(`${forgedBody}.${sig}`, SECRET)).toBeNull();
   });
 

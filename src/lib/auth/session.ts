@@ -33,7 +33,7 @@ export async function verifyValue<T>(value: string, secret: string): Promise<T |
   const parts = value.split(".");
   if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
   const [body, sig] = parts;
-  let sigBytes: Uint8Array;
+  let sigBytes: Uint8Array<ArrayBuffer>;
   let bodyBytes: Uint8Array;
   try {
     sigBytes = base64UrlDecode(sig);
