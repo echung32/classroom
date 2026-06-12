@@ -147,3 +147,10 @@ Then create a production OAuth app (section 4) with the deployed URL
 `DEBUG_ROUTES` stays `"0"` in production (`wrangler.jsonc` vars); to smoke-test the
 deployed App path, temporarily set it to `"1"`, `yarn deploy`, check
 `/debug/github-app`, set it back, and redeploy.
+
+> **Note on auto-injected bindings.** The `@astrojs/cloudflare` adapter enables Astro's
+> KV-backed sessions and Cloudflare Images by default, so the built worker declares
+> `SESSION` (KV) and `IMAGES` bindings. This Phase-0 app uses neither, so they are unused.
+> If `wrangler deploy` ever errors about a missing `SESSION` KV namespace, create one
+> (`yarn wrangler kv namespace create SESSION`) and add it to `wrangler.jsonc`, or remove
+> the unused binding — it does not affect OAuth login or the GitHub App flow.
