@@ -11,7 +11,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 describe("createRepoFromTemplate", () => {
   it("POSTs to the generate endpoint with the right body and maps the result", async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchImpl = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
       jsonResponse({ id: 42, full_name: "org/hw1-octocat", html_url: "https://github.com/org/hw1-octocat" }, 201),
     );
 
@@ -57,7 +57,7 @@ describe("createRepoFromTemplate", () => {
 
 describe("addCollaborator", () => {
   it("PUTs the permission and returns invited + invitationUrl on 201", async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchImpl = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
       jsonResponse({ html_url: "https://github.com/org/hw1-octocat/invitations" }, 201),
     );
 
