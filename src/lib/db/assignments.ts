@@ -71,6 +71,9 @@ export async function createAssignment(
     if (!row) throw new Error("createAssignment: INSERT ... RETURNING produced no row");
     return toAssignment(row);
   } catch (err) {
+    // The UNIQUE(classroom_id, slug) constraint is the authoritative slug-uniqueness
+    // check (no pre-flight SELECT → no check-then-insert race). D1 surfaces it as an
+    // Error whose message contains "UNIQUE constraint failed".
     if (err instanceof Error && /UNIQUE constraint failed/.test(err.message)) {
       throw new ConflictError(`An assignment with slug "${input.slug}" already exists in this classroom`);
     }
