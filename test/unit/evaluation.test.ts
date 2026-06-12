@@ -73,8 +73,10 @@ describe("evaluateAssignmentSubmissions", () => {
               studentId,
               deadlineSha: "d",
               deadlineCommitAt: "2025-12-31T00:00:00Z",
+              latestSha: null,
               latestCommitAt: "x",
               status: frozen[studentId],
+              gradeDecision: "at_deadline",
               evaluatedAt: "2026-06-01T00:00:00Z",
             }
           : null,
@@ -94,8 +96,10 @@ describe("evaluateAssignmentSubmissions", () => {
         studentId: "s1",
         deadlineSha: "frozen",
         deadlineCommitAt: "2025-12-31T00:00:00Z",
+        latestSha: null,
         latestCommitAt: "2025-12-31T00:00:00Z",
         status: "on_time",
+        gradeDecision: "at_deadline",
         evaluatedAt: "2026-05-01T00:00:00Z",
       })),
     });
@@ -103,6 +107,26 @@ describe("evaluateAssignmentSubmissions", () => {
     expect(deps.fetchImpl).not.toHaveBeenCalled();
     expect(deps.freezeSubmission).not.toHaveBeenCalled();
     expect(result.submissions[0].status).toBe("on_time");
+  });
+
+  it("surfaces latestSha and gradeDecision in evaluated submission views", async () => {
+    const deps = makeDeps({
+      getSubmission: vi.fn(async () => ({
+        deadlineSha: "dsha",
+        deadlineCommitAt: "2025-12-31T00:00:00Z",
+        latestSha: "lsha",
+        latestCommitAt: "2026-02-01T00:00:00Z",
+        status: "late",
+        gradeDecision: "accept_late",
+        evaluatedAt: "2026-02-02T00:00:00Z",
+      })),
+    });
+    const result = await evaluateAssignmentSubmissions(deps, {
+      assignmentId: "a1",
+      now: PAST_NOW,
+      refresh: false,
+    });
+    expect(result.submissions[0]).toMatchObject({ latestSha: "lsha", gradeDecision: "accept_late" });
   });
 
   it("records a per-repo error and continues when a repo's GitHub read fails", async () => {
