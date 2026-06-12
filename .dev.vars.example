@@ -1,0 +1,12 @@
+# Copy to .dev.vars (gitignored) and fill in after following docs/github-setup.md.
+# `astro dev` and `wrangler dev` read this file for local secrets.
+GITHUB_APP_ID=
+# PKCS#8 PEM, single line with \n escapes or quoted multiline — see docs/github-setup.md
+GITHUB_APP_PRIVATE_KEY=
+GITHUB_APP_INSTALLATION_ID=
+GITHUB_OAUTH_CLIENT_ID=
+GITHUB_OAUTH_CLIENT_SECRET=
+# openssl rand -hex 32
+SESSION_SECRET=
+# enables GET /debug/github-app locally
+DEBUG_ROUTES=1

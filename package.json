@@ -1,0 +1,33 @@
+{
+  "name": "classroom",
+  "private": true,
+  "type": "module",
+  "packageManager": "yarn@4.16.0",
+  "volta": {
+    "node": "24.16.0",
+    "yarn": "4.16.0"
+  },
+  "scripts": {
+    "dev": "astro dev --host",
+    "build": "astro build",
+    "preview": "yarn build && wrangler dev",
+    "deploy": "yarn build && wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply icspp-classroom --local",
+    "db:migrate:remote": "wrangler d1 migrations apply icspp-classroom --remote",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p test/integration",
+    "test:unit": "vitest run -c vitest.unit.config.ts",
+    "test:integration": "yarn build && vitest run -c vitest.integration.config.ts",
+    "test": "yarn test:unit && yarn test:integration"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^13.7.0",
+    "astro": "^6.4.6"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.16.15",
+    "@cloudflare/workers-types": "^4.20260611.1",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.8",
+    "wrangler": "^4.100.0"
+  }
+}
