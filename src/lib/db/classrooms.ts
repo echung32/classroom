@@ -3,7 +3,6 @@ import type { D1Database } from "@cloudflare/workers-types";
 export interface Classroom {
   id: string;
   name: string;
-  githubOrg: string;
   timezone: string;
   createdBy: string | null;
   createdAt: string;
@@ -12,7 +11,6 @@ export interface Classroom {
 interface ClassroomRow {
   id: string;
   name: string;
-  github_org: string;
   timezone: string;
   created_by: string | null;
   created_at: string;
@@ -22,7 +20,6 @@ function toClassroom(row: ClassroomRow): Classroom {
   return {
     id: row.id,
     name: row.name,
-    githubOrg: row.github_org,
     timezone: row.timezone,
     createdBy: row.created_by,
     createdAt: row.created_at,
@@ -31,15 +28,15 @@ function toClassroom(row: ClassroomRow): Classroom {
 
 export async function createClassroom(
   db: D1Database,
-  input: { name: string; githubOrg: string; timezone: string; createdBy: string },
+  input: { name: string; timezone: string; createdBy: string },
 ): Promise<Classroom> {
   const row = await db
     .prepare(
-      `INSERT INTO classrooms (id, name, github_org, timezone, created_by)
-       VALUES (?1, ?2, ?3, ?4, ?5)
+      `INSERT INTO classrooms (id, name, timezone, created_by)
+       VALUES (?1, ?2, ?3, ?4)
        RETURNING *`,
     )
-    .bind(crypto.randomUUID(), input.name, input.githubOrg, input.timezone, input.createdBy)
+    .bind(crypto.randomUUID(), input.name, input.timezone, input.createdBy)
     .first<ClassroomRow>();
   if (!row) throw new Error("createClassroom: INSERT ... RETURNING produced no row");
   return toClassroom(row);

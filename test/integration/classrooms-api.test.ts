@@ -18,7 +18,7 @@ function post(body: unknown, cookie?: string): Promise<Response> {
 describe("POST /api/classrooms", () => {
   it("creates a classroom owned by the current user (201)", async () => {
     const { user, cookie } = await seedUserAndCookie({ githubId: 1, login: "teacher" });
-    const res = await post({ name: "CS101", github_org: "my-org" }, cookie);
+    const res = await post({ name: "CS101" }, cookie);
     expect(res.status).toBe(201);
 
     const { data } = (await res.json()) as { data: { id: string; createdBy: string; timezone: string } };
@@ -28,13 +28,13 @@ describe("POST /api/classrooms", () => {
   });
 
   it("rejects an unauthenticated request (401)", async () => {
-    const res = await post({ name: "CS101", github_org: "my-org" });
+    const res = await post({ name: "CS101" });
     expect(res.status).toBe(401);
   });
 
   it("rejects an invalid body with field messages (400)", async () => {
     const { cookie } = await seedUserAndCookie({ githubId: 1, login: "teacher" });
-    const res = await post({ name: "", github_org: "my-org" }, cookie);
+    const res = await post({ name: "" }, cookie);
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: { fields?: Record<string, string> } };
     expect(body.error.fields).toHaveProperty("name");
@@ -52,7 +52,6 @@ describe("GET /api/classrooms/:id", () => {
     const { user, cookie } = await seedUserAndCookie({ githubId: 1, login: "teacher" });
     const classroom = await createClassroom(env.DB, {
       name: "CS101",
-      githubOrg: "my-org",
       timezone: "UTC",
       createdBy: user.id,
     });
@@ -77,7 +76,6 @@ describe("GET /api/classrooms/:id", () => {
     const { user } = await seedUserAndCookie({ githubId: 1, login: "teacher" });
     const classroom = await createClassroom(env.DB, {
       name: "CS101",
-      githubOrg: "my-org",
       timezone: "UTC",
       createdBy: user.id,
     });
@@ -94,7 +92,6 @@ describe("GET /api/classrooms/:id", () => {
     const { cookie: intruderCookie } = await seedUserAndCookie({ githubId: 2, login: "intruder" });
     const classroom = await createClassroom(env.DB, {
       name: "CS101",
-      githubOrg: "my-org",
       timezone: "UTC",
       createdBy: owner.id,
     });

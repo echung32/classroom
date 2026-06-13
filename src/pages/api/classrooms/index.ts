@@ -16,7 +16,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const body = await parseBody(request, classroomSchema);
     const classroom = await createClassroom(env.DB, {
       name: body.name,
-      githubOrg: body.github_org,
       timezone: body.timezone,
       createdBy: session.userId,
     });

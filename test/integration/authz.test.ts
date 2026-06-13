@@ -10,7 +10,6 @@ describe("assertOwnsClassroom", () => {
     const { user } = await seedUserAndCookie({ githubId: 1, login: "owner" });
     const classroom = await createClassroom(env.DB, {
       name: "CS101",
-      githubOrg: "my-org",
       timezone: "UTC",
       createdBy: user.id,
     });
@@ -30,7 +29,6 @@ describe("assertOwnsClassroom", () => {
     const { user: other } = await seedUserAndCookie({ githubId: 2, login: "intruder" });
     const classroom = await createClassroom(env.DB, {
       name: "CS101",
-      githubOrg: "my-org",
       timezone: "UTC",
       createdBy: owner.id,
     });

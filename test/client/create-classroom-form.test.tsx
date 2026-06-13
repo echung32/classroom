@@ -18,14 +18,13 @@ describe("CreateClassroomForm", () => {
 
     render(<CreateClassroomForm onSuccess={onSuccess} />);
     await user.type(screen.getByLabelText("Name"), "CS101");
-    await user.type(screen.getByLabelText("GitHub org"), "my-org");
     await user.click(screen.getByRole("button", { name: "Create classroom" }));
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/classrooms",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ name: "CS101", github_org: "my-org", timezone: "UTC" }),
+        body: JSON.stringify({ name: "CS101", timezone: "UTC" }),
       }),
     );
     expect(onSuccess).toHaveBeenCalled();
@@ -36,7 +35,7 @@ describe("CreateClassroomForm", () => {
       "fetch",
       vi.fn(async () =>
         jsonResponse(400, {
-          error: { message: "Validation failed", fields: { github_org: "github_org is required" } },
+          error: { message: "Validation failed", fields: { name: "name is required" } },
         }),
       ),
     );
@@ -47,7 +46,7 @@ describe("CreateClassroomForm", () => {
     await user.type(screen.getByLabelText("Name"), "CS101");
     await user.click(screen.getByRole("button", { name: "Create classroom" }));
 
-    expect(await screen.findByText("github_org is required")).toBeTruthy();
+    expect(await screen.findByText("name is required")).toBeTruthy();
     expect(screen.getByRole("alert").textContent).toContain("Validation failed");
     expect(onSuccess).not.toHaveBeenCalled();
   });

@@ -8,14 +8,12 @@ describe("classrooms repository", () => {
     const { user } = await seedUserAndCookie({ githubId: 1, login: "teacher" });
     const classroom = await createClassroom(env.DB, {
       name: "CS101",
-      githubOrg: "my-org",
       timezone: "America/New_York",
       createdBy: user.id,
     });
 
     expect(classroom.id).toMatch(/^[0-9a-f-]{36}$/);
     expect(classroom.name).toBe("CS101");
-    expect(classroom.githubOrg).toBe("my-org");
     expect(classroom.timezone).toBe("America/New_York");
     expect(classroom.createdBy).toBe(user.id);
     expect(classroom.createdAt).toBeTruthy();
@@ -25,7 +23,6 @@ describe("classrooms repository", () => {
     const { user } = await seedUserAndCookie({ githubId: 1, login: "teacher" });
     const created = await createClassroom(env.DB, {
       name: "CS101",
-      githubOrg: "my-org",
       timezone: "UTC",
       createdBy: user.id,
     });
@@ -40,13 +37,13 @@ describe("listClassroomsByOwner", () => {
     const { user: bob } = await seedUserAndCookie({ githubId: 2, login: "bob" });
 
     const older = await createClassroom(env.DB, {
-      name: "Older", githubOrg: "org", timezone: "UTC", createdBy: alice.id,
+      name: "Older", timezone: "UTC", createdBy: alice.id,
     });
     await createClassroom(env.DB, {
-      name: "Newer", githubOrg: "org", timezone: "UTC", createdBy: alice.id,
+      name: "Newer", timezone: "UTC", createdBy: alice.id,
     });
     await createClassroom(env.DB, {
-      name: "Bobs", githubOrg: "org", timezone: "UTC", createdBy: bob.id,
+      name: "Bobs", timezone: "UTC", createdBy: bob.id,
     });
 
     // created_at has second precision; push `older` into the past so the

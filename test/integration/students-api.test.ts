@@ -7,7 +7,6 @@ import { env } from "cloudflare:test";
 async function makeClassroom(ownerId: string) {
   return createClassroom(env.DB, {
     name: "CS101",
-    githubOrg: "test-org",
     timezone: "UTC",
     createdBy: ownerId,
   });

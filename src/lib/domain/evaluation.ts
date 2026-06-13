@@ -9,7 +9,6 @@ interface AssignmentLite {
 }
 interface ClassroomLite {
   id: string;
-  githubOrg: string;
 }
 interface RepoLite {
   studentId: string;
@@ -28,6 +27,7 @@ interface SubmissionLite {
 
 export interface EvaluationDeps {
   token: string;
+  org: string;
   fetchImpl?: typeof fetch;
   loadAssignment: (id: string) => Promise<AssignmentLite | null>;
   loadClassroom: (id: string) => Promise<ClassroomLite | null>;
@@ -126,6 +126,7 @@ export async function evaluateAssignmentSubmissions(
     return { dueState: "pending", submissions: repos.map((r) => blankView(r, "pending")), errors: [] };
   }
 
+  // Existence check only — the org now comes from deps.org, not the classroom row.
   const classroom = await deps.loadClassroom(assignment.classroomId);
   if (!classroom) throw new AssignmentNotFoundError();
 
@@ -144,7 +145,7 @@ export async function evaluateAssignmentSubmissions(
     try {
       const state = await readRepoCommitState({
         token: deps.token,
-        owner: classroom.githubOrg,
+        owner: deps.org,
         repo: repo.repoName,
         deadlineAt: assignment.deadlineAt,
         fetchImpl: deps.fetchImpl,

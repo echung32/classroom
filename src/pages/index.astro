@@ -29,7 +29,6 @@ const myAssignments = session ? await listAssignmentsForStudentUser(env.DB, sess
                 <a href={`/classrooms/${c.id}`} class="font-medium underline">
                   {c.name}
                 </a>
-                <span class="ml-2 text-sm text-muted-foreground">{c.githubOrg}</span>
               </li>
             ))}
           </ul>

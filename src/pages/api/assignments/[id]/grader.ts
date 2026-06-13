@@ -5,7 +5,7 @@ import { getAssignmentById, setGraderBuilt } from "../../../../lib/db/assignment
 import { getClassroomById } from "../../../../lib/db/classrooms";
 import { listSubmissionsWithStudents } from "../../../../lib/db/submissions";
 import { assertOwnsClassroom } from "../../../../lib/domain/authz";
-import { getInstallationToken } from "../../../../lib/github/app";
+import { getInstallationCreds } from "../../../../lib/github/app";
 import {
   createCommit,
   createMainRef,
@@ -29,7 +29,7 @@ export const POST: APIRoute = async ({ params, cookies }) => {
     if (!assignment) throw new NotFoundError("Assignment not found");
     await assertOwnsClassroom(env.DB, assignment.classroomId, session.userId);
 
-    const token = await getInstallationToken({
+    const { token, org } = await getInstallationCreds({
       appId: env.GITHUB_APP_ID,
       privateKey: env.GITHUB_APP_PRIVATE_KEY,
       installationId: env.GITHUB_APP_INSTALLATION_ID,
@@ -38,6 +38,7 @@ export const POST: APIRoute = async ({ params, cookies }) => {
     const result = await buildGrader(
       {
         token,
+        org,
         loadAssignment: (id) => getAssignmentById(env.DB, id),
         loadClassroom: (id) => getClassroomById(env.DB, id),
         listSubmissionsWithStudents: (id) => listSubmissionsWithStudents(env.DB, id),
