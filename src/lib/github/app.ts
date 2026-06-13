@@ -92,3 +92,37 @@ export async function getInstallationToken(options: AppAuthOptions): Promise<str
 export function clearInstallationTokenCache(): void {
   cachedToken = null;
 }
+
+// Org login is stable for the life of an installation, so no TTL — cache for the
+// isolate's lifetime, keyed like the token cache.
+let cachedOrg: { key: string; org: string } | null = null;
+
+/** The org (account.login) the app is installed on. Cached per isolate. */
+export async function getInstallationOrg(options: AppAuthOptions): Promise<string> {
+  const key = `${options.appId}:${options.installationId}`;
+  if (cachedOrg && cachedOrg.key === key) return cachedOrg.org;
+  const jwt = await buildAppJwt(options);
+  const { data } = await githubRequest<{ account: { login: string } | null }>(
+    `/app/installations/${options.installationId}`,
+    { token: jwt, fetchImpl: options.fetchImpl },
+  );
+  const login = data.account?.login;
+  if (!login) throw new Error("Installation response had no account.login");
+  cachedOrg = { key, org: login };
+  return login;
+}
+
+export function clearInstallationOrgCache(): void {
+  cachedOrg = null;
+}
+
+/** Token + org together — most GitHub-touching routes need both. */
+export async function getInstallationCreds(
+  options: AppAuthOptions,
+): Promise<{ token: string; org: string }> {
+  const [token, org] = await Promise.all([
+    getInstallationToken(options),
+    getInstallationOrg(options),
+  ]);
+  return { token, org };
+}

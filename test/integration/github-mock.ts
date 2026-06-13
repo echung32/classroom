@@ -43,6 +43,11 @@ export async function githubOutbound(request: Request): Promise<Response> {
     return jsonResponse(201, { token: "ghs_test_token", expires_at: "2099-01-01T00:00:00Z" });
   }
 
+  // Installation metadata: the single org this deployment operates on.
+  if (method === "GET" && /^\/app\/installations\/\d+$/.test(path)) {
+    return jsonResponse(200, { account: { login: "test-org" } });
+  }
+
   // Create-repo-from-template: echo the requested owner/name back as the new repo.
   const generate = path.match(/^\/repos\/[^/]+\/[^/]+\/generate$/);
   if (method === "POST" && generate) {
