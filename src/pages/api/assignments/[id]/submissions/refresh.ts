@@ -7,7 +7,7 @@ import {
   AssignmentNotFoundError,
   evaluateAssignmentSubmissions,
 } from "../../../../../lib/domain/evaluation";
-import { getInstallationToken } from "../../../../../lib/github/app";
+import { getInstallationCreds } from "../../../../../lib/github/app";
 import { NotFoundError, toResponse } from "../../../../../lib/http/errors";
 import { error, json } from "../../../../../lib/http/json";
 import { buildEvaluationDeps } from "../submissions";
@@ -22,13 +22,13 @@ export const POST: APIRoute = async ({ params, cookies }) => {
     if (!assignment) throw new NotFoundError("Assignment not found");
     await assertOwnsClassroom(env.DB, assignment.classroomId, session.userId);
 
-    const token = await getInstallationToken({
+    const { token, org } = await getInstallationCreds({
       appId: env.GITHUB_APP_ID,
       privateKey: env.GITHUB_APP_PRIVATE_KEY,
       installationId: env.GITHUB_APP_INSTALLATION_ID,
     });
 
-    const result = await evaluateAssignmentSubmissions(buildEvaluationDeps(env.DB, token), {
+    const result = await evaluateAssignmentSubmissions(buildEvaluationDeps(env.DB, token, org), {
       assignmentId: assignment.id,
       now: new Date().toISOString(),
       refresh: true,

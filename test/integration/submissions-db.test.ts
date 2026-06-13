@@ -19,7 +19,6 @@ async function seed() {
   const { user } = await seedUserAndCookie({ githubId: 1, login: "teacher" });
   const classroom = await createClassroom(env.DB, {
     name: "CS101",
-    githubOrg: "test-org",
     timezone: "UTC",
     createdBy: user.id,
   });
@@ -145,7 +144,7 @@ describe("listReposWithStudentsByAssignment", () => {
 async function seedForGrading() {
   const teacher = await seedUserAndCookie({ githubId: 700, login: "t700" });
   const classroom = await createClassroom(env.DB, {
-    name: "CS", githubOrg: "org", timezone: "UTC", createdBy: teacher.user.id,
+    name: "CS", timezone: "UTC", createdBy: teacher.user.id,
   });
   const assignment = await createAssignment(env.DB, {
     classroomId: classroom.id, slug: "hw1-grading", title: "HW1", templateRepo: "org/hw1-template",

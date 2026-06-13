@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createRepoFromTemplate } from "../../src/lib/github/repos";
-import { addCollaborator } from "../../src/lib/github/repos";
+import { addCollaborator, createRepoFromTemplate, getRepoMeta } from "../../src/lib/github/repos";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -93,5 +92,42 @@ describe("addCollaborator", () => {
     });
 
     expect(result).toEqual({ status: "already_member" });
+  });
+});
+
+describe("getRepoMeta", () => {
+  it("returns isTemplate:true for a template repo", async () => {
+    const fetchImpl = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse({ is_template: true }, 200),
+    );
+    const meta = await getRepoMeta({ token: "ghs_x", owner: "org", name: "hw1-template", fetchImpl });
+    expect(meta).toEqual({ isTemplate: true });
+    const [url] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://api.github.com/repos/org/hw1-template");
+  });
+
+  it("returns isTemplate:false when the repo is not a template", async () => {
+    const fetchImpl = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse({ is_template: false }, 200),
+    );
+    expect(await getRepoMeta({ token: "ghs_x", owner: "org", name: "plain", fetchImpl })).toEqual({
+      isTemplate: false,
+    });
+  });
+
+  it("returns null on 404 (missing or inaccessible)", async () => {
+    const fetchImpl = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse({ message: "Not Found" }, 404),
+    );
+    expect(await getRepoMeta({ token: "ghs_x", owner: "org", name: "ghost", fetchImpl })).toBeNull();
+  });
+
+  it("rethrows non-404 GitHub errors", async () => {
+    const fetchImpl = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+      jsonResponse({ message: "boom" }, 500),
+    );
+    await expect(
+      getRepoMeta({ token: "ghs_x", owner: "org", name: "x", fetchImpl }),
+    ).rejects.toThrow();
   });
 });

@@ -44,6 +44,30 @@ export interface AddCollaboratorResult {
   invitationUrl?: string;
 }
 
+/**
+ * Look up a repo's template-readiness at assignment-creation time. Returns null
+ * when GitHub answers 404 (repo missing or not visible to the installation) so
+ * the caller can map it to a friendly 400; rethrows any other GitHub error.
+ */
+export async function getRepoMeta(input: {
+  token: string;
+  owner: string;
+  name: string;
+  fetchImpl?: typeof fetch;
+}): Promise<{ isTemplate: boolean } | null> {
+  const { token, owner, name, fetchImpl } = input;
+  try {
+    const { data } = await githubRequest<{ is_template?: boolean }>(
+      `/repos/${owner}/${name}`,
+      { token, fetchImpl },
+    );
+    return { isTemplate: data.is_template === true };
+  } catch (err) {
+    if (err instanceof GitHubApiError && err.status === 404) return null;
+    throw err;
+  }
+}
+
 export async function addCollaborator(input: {
   token: string;
   owner: string;

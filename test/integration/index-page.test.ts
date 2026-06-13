@@ -54,7 +54,6 @@ describe("GET /", () => {
     const { user, cookie } = await seedUserAndCookie({ githubId: 7, login: "teacher" });
     const classroom = await createClassroom(env.DB, {
       name: "CS101",
-      githubOrg: "my-org",
       timezone: "UTC",
       createdBy: user.id,
     });
@@ -64,14 +63,12 @@ describe("GET /", () => {
     const html = await response.text();
     expect(html).toContain("CS101");
     expect(html).toContain(`/classrooms/${classroom.id}`);
-    expect(html).toContain("my-org");
   });
 
   it("lists the student's assignments with accepted/not-accepted badges", async () => {
     const teacher = await seedUserAndCookie({ githubId: 40, login: "teacher40" });
     const classroom = await createClassroom(env.DB, {
       name: "CS200",
-      githubOrg: "my-org",
       timezone: "UTC",
       createdBy: teacher.user.id,
     });

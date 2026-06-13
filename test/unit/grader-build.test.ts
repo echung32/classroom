@@ -10,11 +10,12 @@ const BEFORE = "2025-12-01T00:00:00Z";
 function makeDeps(over: Partial<GraderBuildDeps> = {}): GraderBuildDeps {
   return {
     token: "t",
+    org: "org",
     fetchImpl: vi.fn(),
     loadAssignment: vi.fn(async () => ({
       id: "a1", classroomId: "c1", slug: "hw1", title: "HW 1", deadlineAt: DEADLINE,
     })),
-    loadClassroom: vi.fn(async () => ({ id: "c1", githubOrg: "org" })),
+    loadClassroom: vi.fn(async () => ({ id: "c1" })),
     listSubmissionsWithStudents: vi.fn(async () => [
       { studentId: "s1", githubUsername: "ada", repoName: "hw1-ada", gradeDecision: "at_deadline", deadlineSha: "d-ada", latestSha: "l-ada", status: "on_time" },
     ]),
