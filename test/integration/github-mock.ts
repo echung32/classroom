@@ -144,5 +144,20 @@ export async function githubOutbound(request: Request): Promise<Response> {
     return jsonResponse(200, { ref: "refs/heads/main", object: { sha: "commit-sha-canned" } });
   }
 
+  // GET /repos/{owner}/{name} — template validation at assignment creation, and
+  // the createRepoFromTemplate 422-recovery GET. Conventions by repo name:
+  // "not-a-template" → is_template:false; "ghost" → 404; else a ready template.
+  const repoMeta = path.match(/^\/repos\/([^/]+)\/([^/]+)$/);
+  if (method === "GET" && repoMeta) {
+    const [, owner, name] = repoMeta;
+    if (/ghost/i.test(name)) return jsonResponse(404, { message: "Not Found" });
+    return jsonResponse(200, {
+      id: 200,
+      full_name: `${owner}/${name}`,
+      html_url: `https://github.com/${owner}/${name}`,
+      is_template: !/not-a-template/i.test(name),
+    });
+  }
+
   return new Response(`unmocked GitHub request in test: ${method} ${path}`, { status: 501 });
 }
