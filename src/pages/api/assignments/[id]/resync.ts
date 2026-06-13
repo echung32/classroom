@@ -5,7 +5,7 @@ import { getAssignmentById } from "../../../../lib/db/assignments";
 import { getClassroomById } from "../../../../lib/db/classrooms";
 import { getRepoByAssignmentStudent, touchPermissionSynced } from "../../../../lib/db/repos";
 import { findStudentByUser } from "../../../../lib/db/students";
-import { getInstallationToken } from "../../../../lib/github/app";
+import { getInstallationCreds } from "../../../../lib/github/app";
 import { addCollaborator } from "../../../../lib/github/repos";
 import { NotFoundError, toResponse } from "../../../../lib/http/errors";
 import { error, json } from "../../../../lib/http/json";
@@ -27,7 +27,7 @@ export const POST: APIRoute = async ({ params, cookies }) => {
     const repo = await getRepoByAssignmentStudent(env.DB, assignment.id, student.id);
     if (!repo) throw new NotFoundError("Accept the assignment first");
 
-    const token = await getInstallationToken({
+    const { token, org } = await getInstallationCreds({
       appId: env.GITHUB_APP_ID,
       privateKey: env.GITHUB_APP_PRIVATE_KEY,
       installationId: env.GITHUB_APP_INSTALLATION_ID,
@@ -35,7 +35,7 @@ export const POST: APIRoute = async ({ params, cookies }) => {
 
     const collab = await addCollaborator({
       token,
-      owner: classroom.githubOrg,
+      owner: org,
       repo: repo.repoName,
       username: session.githubUsername,
       permission: "push",

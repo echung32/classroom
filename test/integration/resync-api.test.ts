@@ -13,7 +13,6 @@ async function setupAccepted(opts: { githubId: number; login: string }) {
   const teacher = await seedUserAndCookie({ githubId: opts.githubId, login: `teacher-${opts.login}` });
   const classroom = await createClassroom(env.DB, {
     name: "CS101",
-    githubOrg: "test-org",
     timezone: "UTC",
     createdBy: teacher.user.id,
   });
@@ -76,7 +75,6 @@ describe("POST /api/assignments/:id/resync", () => {
     const teacher = await seedUserAndCookie({ githubId: 80, login: "teacher-noaccept" });
     const classroom = await createClassroom(env.DB, {
       name: "CS101",
-      githubOrg: "test-org",
       timezone: "UTC",
       createdBy: teacher.user.id,
     });
@@ -100,7 +98,6 @@ describe("POST /api/assignments/:id/resync", () => {
     const teacher = await seedUserAndCookie({ githubId: 90, login: "teacher-enrollednorepo" });
     const classroom = await createClassroom(env.DB, {
       name: "CS101",
-      githubOrg: "test-org",
       timezone: "UTC",
       createdBy: teacher.user.id,
     });

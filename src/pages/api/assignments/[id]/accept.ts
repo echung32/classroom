@@ -6,7 +6,7 @@ import { getClassroomById } from "../../../../lib/db/classrooms";
 import { getRepoByAssignmentStudent, recordRepo } from "../../../../lib/db/repos";
 import { resolveStudentForAccept } from "../../../../lib/domain/enrollment";
 import { repoNameFor, repoUrlFor, splitRepo } from "../../../../lib/domain/slug";
-import { getInstallationToken } from "../../../../lib/github/app";
+import { getInstallationOrg, getInstallationToken } from "../../../../lib/github/app";
 import { addCollaborator, createRepoFromTemplate } from "../../../../lib/github/repos";
 import { NotFoundError, toResponse } from "../../../../lib/http/errors";
 import { error, json } from "../../../../lib/http/json";
@@ -23,6 +23,7 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
 
     const assignment = await getAssignmentById(env.DB, params.id!);
     if (!assignment) throw new NotFoundError("Assignment not found");
+    // Existence check only — the org now comes from getInstallationOrg, not the classroom row.
     const classroom = await getClassroomById(env.DB, assignment.classroomId);
     if (!classroom) throw new NotFoundError("Classroom not found");
 
@@ -33,13 +34,21 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
       rosterStudentId: body.rosterStudentId,
     });
 
+    const org = await getInstallationOrg({
+      appId: env.GITHUB_APP_ID,
+      privateKey: env.GITHUB_APP_PRIVATE_KEY,
+      installationId: env.GITHUB_APP_INSTALLATION_ID,
+    });
+
     // Idempotency: if a repo already exists for (assignment, student), accept is
-    // already done. This short-circuit runs BEFORE getInstallationToken, so a
-    // repeat accept makes zero GitHub calls.
+    // already done. This short-circuit mints no token and writes nothing; the
+    // only GitHub call is the org lookup above (cached per isolate after the
+    // first). Org stays a separate getInstallationOrg (not getInstallationCreds)
+    // so the token is minted lazily and only on the create path below.
     const existing = await getRepoByAssignmentStudent(env.DB, assignment.id, student.id);
     if (existing) {
       return json(
-        { repoUrl: repoUrlFor(classroom.githubOrg, existing.repoName), status: "already_accepted" },
+        { repoUrl: repoUrlFor(org, existing.repoName), status: "already_accepted" },
         201,
       );
     }
@@ -57,14 +66,14 @@ export const POST: APIRoute = async ({ params, request, cookies }) => {
       token,
       templateOwner,
       templateRepo,
-      owner: classroom.githubOrg,
+      owner: org,
       name: repoName,
       isPrivate: true,
     });
 
     const collab = await addCollaborator({
       token,
-      owner: classroom.githubOrg,
+      owner: org,
       repo: repoName,
       username: session.githubUsername,
       permission: "push",

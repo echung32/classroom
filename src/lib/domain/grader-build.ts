@@ -20,11 +20,11 @@ interface AssignmentForBuild {
 }
 interface ClassroomForBuild {
   id: string;
-  githubOrg: string;
 }
 
 export interface GraderBuildDeps {
   token: string;
+  org: string;
   fetchImpl?: typeof fetch;
   loadAssignment: (id: string) => Promise<AssignmentForBuild | null>;
   loadClassroom: (id: string) => Promise<ClassroomForBuild | null>;
@@ -98,6 +98,7 @@ export async function buildGrader(
     throw new ValidationError("Cannot build a grader before the assignment deadline has passed");
   }
 
+  // Existence check only — the org now comes from deps.org, not the classroom row.
   const classroom = await deps.loadClassroom(assignment.classroomId);
   if (!classroom) throw new AssignmentNotFoundError();
 
@@ -107,7 +108,7 @@ export async function buildGrader(
     throw new ValidationError("Nothing to build: no submissions are eligible for the grader");
   }
 
-  const org = classroom.githubOrg;
+  const org = deps.org;
   const name = `grader-${assignment.slug}`;
   const repo = await deps.ensureOrgRepo({ token: deps.token, org, name, fetchImpl: deps.fetchImpl });
 

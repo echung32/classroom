@@ -16,7 +16,7 @@ const FUTURE = "2099-01-01T00:00:00Z";
 async function seedBoard(opts: { githubId: number; deadlineAt: string }) {
   const teacher = await seedUserAndCookie({ githubId: opts.githubId, login: `teacher-${opts.githubId}` });
   const classroom = await createClassroom(env.DB, {
-    name: "CS", githubOrg: "org", timezone: "UTC", createdBy: teacher.user.id,
+    name: "CS", timezone: "UTC", createdBy: teacher.user.id,
   });
   const assignment = await createAssignment(env.DB, {
     classroomId: classroom.id, slug: "hw1", title: "HW1", templateRepo: "org/hw1-template",
@@ -68,7 +68,7 @@ describe("POST grader", () => {
         skipped: { username: string | null; studentId: string; reason: string }[];
       };
     };
-    expect(body.data.graderRepo).toBe("org/grader-hw1");
+    expect(body.data.graderRepo).toBe("test-org/grader-hw1");
 
     const included = body.data.included.sort((a, b) => a.username.localeCompare(b.username));
     expect(included).toEqual([
@@ -81,7 +81,7 @@ describe("POST grader", () => {
     expect(reasons.dot).toBe("no-deadline-sha");
 
     const after = await getAssignmentById(env.DB, assignment.id);
-    expect(after?.graderRepo).toBe("org/grader-hw1");
+    expect(after?.graderRepo).toBe("test-org/grader-hw1");
     expect(after?.status).toBe("built");
   });
 

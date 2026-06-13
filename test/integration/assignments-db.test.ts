@@ -16,7 +16,6 @@ async function seedClassroom(githubId = 1, login = "teacher") {
   const { user } = await seedUserAndCookie({ githubId, login });
   return createClassroom(env.DB, {
     name: "CS101",
-    githubOrg: "my-org",
     timezone: "UTC",
     createdBy: user.id,
   });

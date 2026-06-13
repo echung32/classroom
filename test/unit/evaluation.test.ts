@@ -27,9 +27,10 @@ function makeDeps(overrides: Partial<Parameters<typeof evaluateAssignmentSubmiss
   });
   return {
     token: "ghs_x",
+    org: "org",
     fetchImpl,
     loadAssignment: vi.fn(async () => ({ id: "a1", classroomId: "c1", deadlineAt: DEADLINE })),
-    loadClassroom: vi.fn(async () => ({ id: "c1", githubOrg: "org" })),
+    loadClassroom: vi.fn(async () => ({ id: "c1" })),
     listRepos: vi.fn(async () => [
       { studentId: "s1", repoName: "hw1-ontime", githubUsername: "ontime" },
       { studentId: "s2", repoName: "hw1-late", githubUsername: "late" },

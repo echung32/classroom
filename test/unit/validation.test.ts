@@ -13,24 +13,24 @@ function req(body: unknown): Request {
 
 describe("parseBody + classroomSchema", () => {
   it("accepts valid input and defaults timezone to UTC", async () => {
-    const out = await parseBody(req({ name: "CS101", github_org: "my-org" }), classroomSchema);
-    expect(out).toEqual({ name: "CS101", github_org: "my-org", timezone: "UTC" });
+    const out = await parseBody(req({ name: "CS101" }), classroomSchema);
+    expect(out).toEqual({ name: "CS101", timezone: "UTC" });
   });
 
   it("accepts a valid IANA timezone", async () => {
     const out = await parseBody(
-      req({ name: "CS101", github_org: "my-org", timezone: "America/New_York" }),
+      req({ name: "CS101", timezone: "America/New_York" }),
       classroomSchema,
     );
     expect(out.timezone).toBe("America/New_York");
   });
 
-  it("rejects a blank name, blank org, and bad timezone with field messages", async () => {
-    await expect(parseBody(req({ name: "", github_org: "o" }), classroomSchema)).rejects.toMatchObject({
+  it("rejects a blank name and bad timezone with field messages", async () => {
+    await expect(parseBody(req({ name: "" }), classroomSchema)).rejects.toMatchObject({
       name: "ValidationError",
     });
     const err = await parseBody(
-      req({ name: "CS101", github_org: "my-org", timezone: "Mars/Phobos" }),
+      req({ name: "CS101", timezone: "Mars/Phobos" }),
       classroomSchema,
     ).catch((e) => e);
     expect(err).toBeInstanceOf(ValidationError);

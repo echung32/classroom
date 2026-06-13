@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { base64UrlDecode } from "../../src/lib/encoding";
 import {
   buildAppJwt,
+  clearInstallationOrgCache,
   clearInstallationTokenCache,
+  getInstallationCreds,
+  getInstallationOrg,
   getInstallationToken,
   mintInstallationToken,
 } from "../../src/lib/github/app";
@@ -141,5 +144,75 @@ describe("getInstallationToken cache", () => {
     await getInstallationToken({ appId: "1", privateKey: privateKeyPem, installationId: "2", fetchImpl, nowSeconds: NOW });
     await getInstallationToken({ appId: "1", privateKey: privateKeyPem, installationId: "999", fetchImpl, nowSeconds: NOW });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("getInstallationOrg cache", () => {
+  beforeEach(() => clearInstallationOrgCache());
+
+  function orgFetch(login: string) {
+    return vi.fn(
+      async (_url: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(JSON.stringify({ account: { login } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+  }
+
+  it("resolves account.login from GET /app/installations/:id", async () => {
+    const { privateKeyPem } = await generateTestKeyPair();
+    const fetchImpl = orgFetch("acme-org");
+    const org = await getInstallationOrg({
+      appId: "1", privateKey: privateKeyPem, installationId: "42", fetchImpl, nowSeconds: NOW,
+    });
+    expect(org).toBe("acme-org");
+    const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://api.github.com/app/installations/42");
+    expect((init.headers as Record<string, string>).authorization).toMatch(/^Bearer [\w-]+\.[\w-]+\.[\w-]+$/);
+  });
+
+  it("caches per appId:installationId within the isolate", async () => {
+    const { privateKeyPem } = await generateTestKeyPair();
+    const fetchImpl = orgFetch("acme-org");
+    const base = { appId: "1", privateKey: privateKeyPem, installationId: "42", fetchImpl, nowSeconds: NOW };
+    await getInstallationOrg(base);
+    await getInstallationOrg(base);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not serve an org cached for a different installation", async () => {
+    const { privateKeyPem } = await generateTestKeyPair();
+    const fetchImpl = orgFetch("acme-org");
+    await getInstallationOrg({ appId: "1", privateKey: privateKeyPem, installationId: "42", fetchImpl, nowSeconds: NOW });
+    await getInstallationOrg({ appId: "1", privateKey: privateKeyPem, installationId: "99", fetchImpl, nowSeconds: NOW });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("getInstallationCreds", () => {
+  beforeEach(() => {
+    clearInstallationTokenCache();
+    clearInstallationOrgCache();
+  });
+
+  it("resolves the token and org together", async () => {
+    const { privateKeyPem } = await generateTestKeyPair();
+    // Route both the token-mint POST and the installation GET through one mock.
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL) => {
+      const path = new URL(url as string).pathname;
+      const body = path.endsWith("/access_tokens")
+        ? { token: "ghs_creds", expires_at: new Date((NOW + 3600) * 1000).toISOString() }
+        : { account: { login: "acme-org" } };
+      return new Response(JSON.stringify(body), {
+        status: path.endsWith("/access_tokens") ? 201 : 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+
+    const creds = await getInstallationCreds({
+      appId: "1", privateKey: privateKeyPem, installationId: "42", fetchImpl, nowSeconds: NOW,
+    });
+    expect(creds).toEqual({ token: "ghs_creds", org: "acme-org" });
   });
 });
