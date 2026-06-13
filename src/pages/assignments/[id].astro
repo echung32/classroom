@@ -23,6 +23,7 @@ import NotFound from "../../components/NotFound.astro";
 import StatusBoard from "../../components/StatusBoard";
 import AcceptPanel from "../../components/AcceptPanel";
 import ResyncButton from "../../components/ResyncButton";
+import CopyLinkButton from "../../components/CopyLinkButton";
 
 const env = getEnv();
 const id = Astro.params.id!;
@@ -125,6 +126,10 @@ const myRepoError = studentEval?.errors[0] ?? null;
               Grader repo: {assignment!.graderRepo}
             </a>
           )}
+          <div class="mt-3 space-y-1">
+            <p class="text-sm font-medium">Share with students</p>
+            <CopyLinkButton client:load url={`${Astro.url.origin}/assignments/${id}`} />
+          </div>
         </header>
 
         {evalError && <p role="alert" class="text-sm text-destructive">{evalError}</p>}

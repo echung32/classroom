@@ -78,6 +78,7 @@ describe("GET /assignments/:id", () => {
     expect(html).toContain("Accept assignment");
     // Teacher chrome must NOT leak to students.
     expect(html).not.toContain("Build grader");
+    expect(html).not.toContain("Share with students");
   });
 
   it("shows the no-deadline notice when deadline_at is null", async () => {
@@ -99,6 +100,16 @@ describe("GET /assignments/:id", () => {
     expect(response.status).toBe(200);
     const html = await response.text();
     expect(html).toContain("not due yet");
+  });
+
+  it("shows the teacher a shareable invite link with the assignment URL", async () => {
+    const { cookie, assignment } = await seedAssignment();
+    const res = await SELF.fetch(`https://example.com/assignments/${assignment.id}`, {
+      headers: { cookie },
+    });
+    const html = await res.text();
+    expect(html).toContain("Share with students");
+    expect(html).toContain(`https://example.com/assignments/${assignment.id}`);
   });
 
   it("renders the board after the deadline (lazy evaluation trigger)", async () => {
