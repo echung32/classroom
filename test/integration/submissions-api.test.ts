@@ -28,7 +28,6 @@ async function seedBoard(opts: { deadlineAt?: string; githubId: number } = { git
   const teacher = await seedUserAndCookie({ githubId: opts.githubId, login: `teacher-${opts.githubId}` });
   const classroom = await createClassroom(env.DB, {
     name: "CS101",
-    githubOrg: "test-org",
     timezone: "UTC",
     createdBy: teacher.user.id,
   });

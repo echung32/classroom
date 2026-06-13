@@ -10,7 +10,7 @@ import { seedUserAndCookie } from "./helpers";
 async function seedEvaluated(githubId: number) {
   const teacher = await seedUserAndCookie({ githubId, login: `teacher-${githubId}` });
   const classroom = await createClassroom(env.DB, {
-    name: "CS", githubOrg: "org", timezone: "UTC", createdBy: teacher.user.id,
+    name: "CS", timezone: "UTC", createdBy: teacher.user.id,
   });
   const assignment = await createAssignment(env.DB, {
     classroomId: classroom.id, slug: "hw1", title: "HW1", templateRepo: "org/hw1-template",

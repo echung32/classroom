@@ -12,7 +12,6 @@ async function seedAssignment(deadlineAt?: string) {
   const { user, cookie } = await seedUserAndCookie({ githubId: 1, login: "teacher" });
   const classroom = await createClassroom(env.DB, {
     name: "CS101",
-    githubOrg: "test-org",
     timezone: "UTC",
     createdBy: user.id,
   });

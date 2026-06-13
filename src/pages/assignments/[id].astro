@@ -15,7 +15,7 @@ import {
   evaluateAssignmentSubmissions,
   type EvaluationResult,
 } from "../../lib/domain/evaluation";
-import { getInstallationToken } from "../../lib/github/app";
+import { getInstallationCreds, getInstallationOrg } from "../../lib/github/app";
 import { buildEvaluationDeps } from "../api/assignments/[id]/submissions";
 import { shortSha, statusBadgeClass } from "../../components/client/format";
 import ConsoleLayout from "../../layouts/ConsoleLayout.astro";
@@ -43,12 +43,12 @@ let evaluation: EvaluationResult | null = null;
 let evalError: string | null = null;
 if (owned) {
   try {
-    const token = await getInstallationToken({
+    const { token, org } = await getInstallationCreds({
       appId: env.GITHUB_APP_ID,
       privateKey: env.GITHUB_APP_PRIVATE_KEY,
       installationId: env.GITHUB_APP_INSTALLATION_ID,
     });
-    evaluation = await evaluateAssignmentSubmissions(buildEvaluationDeps(env.DB, token), {
+    evaluation = await evaluateAssignmentSubmissions(buildEvaluationDeps(env.DB, token, org), {
       assignmentId: assignment!.id,
       now: new Date().toISOString(),
       refresh: false,
@@ -63,6 +63,7 @@ if (owned) {
 const studentView = found && !owned;
 let student: Student | null = null;
 let repo: Repo | null = null;
+let studentOrg = "";
 let rosterOptions: { id: string; rosterIdentifier: string | null }[] = [];
 let deadlinePassed = false;
 let studentEval: EvaluationResult | null = null;
@@ -76,20 +77,26 @@ if (studentView) {
     // Accept panel; roster options only matter for users without a student row.
     rosterOptions = student ? [] : await listUnclaimedStudents(env.DB, assignment!.classroomId);
   } else {
+    studentOrg = await getInstallationOrg({
+      appId: env.GITHUB_APP_ID,
+      privateKey: env.GITHUB_APP_PRIVATE_KEY,
+      installationId: env.GITHUB_APP_INSTALLATION_ID,
+    });
     deadlinePassed =
       assignment!.deadlineAt !== null && Date.now() >= Date.parse(assignment!.deadlineAt);
-    // Pre-deadline / no-deadline loads make ZERO GitHub calls (no token mint,
-    // no evaluator). Post-deadline, this runs the same evaluation path as the
-    // teacher board narrowed to this student's repo — their first look freezes
-    // deadline_sha (Phase 3 COALESCE upsert); refresh:true keeps latest/status live.
+    // Pre-deadline / no-deadline loads mint no token and run no evaluator — only
+    // the cached org lookup above (needed to render the repo link). Post-deadline,
+    // this runs the same evaluation path as the teacher board narrowed to this
+    // student's repo — their first look freezes deadline_sha (Phase 3 COALESCE
+    // upsert); refresh:true keeps latest/status live.
     if (deadlinePassed) {
       try {
-        const token = await getInstallationToken({
+        const { token, org } = await getInstallationCreds({
           appId: env.GITHUB_APP_ID,
           privateKey: env.GITHUB_APP_PRIVATE_KEY,
           installationId: env.GITHUB_APP_INSTALLATION_ID,
         });
-        const deps = buildEvaluationDeps(env.DB, token);
+        const deps = buildEvaluationDeps(env.DB, token, org);
         studentEval = await evaluateAssignmentSubmissions(
           {
             ...deps,
@@ -158,7 +165,7 @@ const myRepoError = studentEval?.errors[0] ?? null;
         <header>
           <h1 class="text-xl font-semibold">{assignment!.title}</h1>
           <p class="text-sm text-muted-foreground">
-            {classroom!.name} &middot; {classroom!.githubOrg} &middot; {assignment!.deadlineAt ? `due ${assignment!.deadlineAt}` : "no deadline"}
+            {classroom!.name} &middot; {assignment!.deadlineAt ? `due ${assignment!.deadlineAt}` : "no deadline"}
           </p>
         </header>
 
@@ -173,8 +180,8 @@ const myRepoError = studentEval?.errors[0] ?? null;
           <div class="space-y-4">
             <p class="text-sm">
               Your repo:{" "}
-              <a href={repoUrlFor(classroom!.githubOrg, repo.repoName)} class="underline">
-                {classroom!.githubOrg}/{repo.repoName}
+              <a href={repoUrlFor(studentOrg, repo.repoName)} class="underline">
+                {studentOrg}/{repo.repoName}
               </a>
             </p>
 

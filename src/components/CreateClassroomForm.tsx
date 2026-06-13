@@ -11,7 +11,6 @@ interface Props {
 
 export default function CreateClassroomForm({ onSuccess = () => location.reload() }: Props) {
   const [name, setName] = useState("");
-  const [githubOrg, setGithubOrg] = useState("");
   const [timezone, setTimezone] = useState("UTC");
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
@@ -25,7 +24,7 @@ export default function CreateClassroomForm({ onSuccess = () => location.reload(
     try {
       await apiFetch("/api/classrooms", {
         method: "POST",
-        body: { name, github_org: githubOrg, timezone },
+        body: { name, timezone },
       });
       // busy intentionally stays true until unmount/reload; prevents double-submit
       onSuccess();
@@ -51,11 +50,6 @@ export default function CreateClassroomForm({ onSuccess = () => location.reload(
             <Label htmlFor="cc-name">Name</Label>
             <Input id="cc-name" value={name} onChange={(e) => setName(e.target.value)} />
             {fields.name && <p className="text-sm text-destructive">{fields.name}</p>}
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="cc-org">GitHub org</Label>
-            <Input id="cc-org" value={githubOrg} onChange={(e) => setGithubOrg(e.target.value)} />
-            {fields.github_org && <p className="text-sm text-destructive">{fields.github_org}</p>}
           </div>
           <div className="space-y-1">
             <Label htmlFor="cc-tz">Timezone</Label>

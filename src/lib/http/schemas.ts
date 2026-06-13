@@ -16,7 +16,6 @@ const TEMPLATE_REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 
 export const classroomSchema = v.object({
   name: v.pipe(v.string(), v.trim(), v.minLength(1, "name is required")),
-  github_org: v.pipe(v.string(), v.trim(), v.minLength(1, "github_org is required")),
   timezone: v.optional(
     v.pipe(v.string(), v.check(isValidTimezone, "timezone must be a valid IANA timezone")),
     "UTC",
