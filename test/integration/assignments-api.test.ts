@@ -75,6 +75,30 @@ describe("POST /api/classrooms/:id/assignments", () => {
     const body = (await res.json()) as { error: { fields?: Record<string, string> } };
     expect(body.error.fields).toHaveProperty("slug");
   });
+
+  it("rejects a non-template repo with a template_repo field message (400)", async () => {
+    const { classroom, cookie } = await ownedClassroom();
+    const res = await postAssignment(
+      classroom.id,
+      { ...VALID, template_repo: "my-org/not-a-template" },
+      cookie,
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields).toHaveProperty("template_repo");
+  });
+
+  it("rejects a missing/inaccessible template repo (400)", async () => {
+    const { classroom, cookie } = await ownedClassroom();
+    const res = await postAssignment(
+      classroom.id,
+      { ...VALID, template_repo: "my-org/ghost-repo" },
+      cookie,
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { fields?: Record<string, string> } };
+    expect(body.error.fields).toHaveProperty("template_repo");
+  });
 });
 
 describe("GET /api/assignments/:id", () => {
